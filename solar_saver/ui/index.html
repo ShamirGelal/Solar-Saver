@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#153e36">
+  <title>Solar Saver · A brighter balance</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="./app.css">
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to comparison</a>
+  <header class="topbar wrap">
+    <a href="./" class="brand" aria-label="Solar Saver home"><span class="sun-mark" aria-hidden="true">✳</span> Solar Saver</a>
+    <span class="demo-badge"><span aria-hidden="true">●</span> Offline simulation</span>
+  </header>
+  <main id="main" class="wrap">
+    <section class="intro" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">CHARLOTTESVILLE DISTRICT · DEMO LAB</p>
+        <h1>A brighter balance.<br><span>One day at a time.</span></h1>
+        <p class="intro-copy">Move flexible electricity use toward the sun. Compare how three scheduling policies balance solar availability, local capacity, and people's preferred times.</p>
+      </div>
+      <aside class="day-card" aria-label="Demo scenario">
+        <span class="eyebrow">THE SIMULATED DAY</span>
+        <strong>October 18, 2026</strong>
+        <p>24 hourly slots · 100 synthetic users</p>
+        <div><span>Solar installed</span><b>300 kW</b></div>
+        <div><span>Total-demand capacity</span><b>500 kW</b></div>
+        <div><span>Reproducible scenario</span><b>Seed 42</b></div>
+      </aside>
+    </section>
+    <div class="notice"><span aria-hidden="true">ⓘ</span><p><strong>A simulation, with clear limits.</strong> Demand is synthetic, not observed utility data. Expected solar supply comes from the seasonal demo baseline, not a trained model or live weather forecast. Scheduling shifts energy use; it does not inherently save total energy. Published results are precomputed for this fixed scenario.</p></div>
+    <section class="section-head"><div><p class="eyebrow">01 / POLICY COMPARISON</p><h2>Same day. Three approaches.</h2></div><button id="reload" type="button">↻ Reload comparison</button></section>
+    <p id="status" role="status" aria-live="polite">Loading the comparison…</p>
+    <div id="error" class="error" role="alert" hidden></div>
+    <noscript><p class="error">Enable JavaScript to load comparison results.</p></noscript>
+    <div id="results" hidden>
+      <div id="policy-cards" class="policy-cards" aria-label="Scheduling policy summaries"></div>
+      <section class="chart-panel" aria-labelledby="chart-title">
+        <div class="chart-header"><div><p class="eyebrow">02 / THE DAILY PROFILE</p><h2 id="chart-title">Where demand meets daylight</h2><p id="chart-summary" class="muted"></p></div>
+          <fieldset class="policy-picker"><legend class="sr-only">Policy displayed in chart</legend>
+            <label><input type="radio" name="policy" value="uncoordinated"><span>Uncoordinated</span></label>
+            <label><input type="radio" name="policy" value="solar_only"><span>Solar-only</span></label>
+            <label><input type="radio" name="policy" value="balanced" checked><span>Balanced</span></label>
+          </fieldset>
+        </div>
+        <div class="legend"><span><i class="solar"></i>Expected solar supply</span><span><i class="demand"></i>Total demand</span><span><i class="capacity"></i>Total-demand capacity</span></div>
+        <div id="chart"></div>
+        <p class="chart-note">Power in kW · Each step represents one hour · Total demand includes background and scheduled flexible workloads.</p>
+        <details><summary>View the hourly data</summary><div class="table-scroll"><table id="hourly-table"><caption id="hourly-caption">Hourly profile in kW</caption><thead><tr><th scope="col">Hour</th><th scope="col">Solar supply</th><th scope="col">Total demand</th><th scope="col">Grid draw</th><th scope="col">Capacity</th></tr></thead><tbody></tbody></table></div></details>
+      </section>
+      <section class="metrics-section" aria-labelledby="metrics-title">
+        <div class="section-head"><div><p class="eyebrow">03 / THE TRADE-OFFS</p><h2 id="metrics-title">See the whole picture</h2></div><p class="muted">Read energy and completion together.</p></div>
+        <div class="table-scroll metrics-panel"><table id="metrics-table"><caption class="sr-only">Comparison of scheduling metrics across the three policies</caption><thead><tr><th scope="col">Metric</th><th scope="col">Uncoordinated</th><th scope="col">Solar-only</th><th scope="col">Balanced</th></tr></thead><tbody></tbody></table></div>
+        <p class="footnote">Renewable matching is solar energy used ÷ total served energy. Preference shifts cover completed workloads only. Lower grid energy with unfinished work is not an energy saving. Critical completion is shown as “No critical workloads” when none were generated.</p>
+      </section>
+      <aside class="explanation"><div><span class="eyebrow">HOW TO READ THIS DEMO</span><h2>Better timing, visible trade-offs.</h2></div><p>Uncoordinated scheduling follows preferred times and may exceed capacity. Solar-only shifts toward available solar within workload windows and capacity. Balanced also considers preference, priority, peak demand, and fairness. These are deterministic greedy policies, not guarantees of a globally optimal schedule.</p></aside>
+    </div>
+  </main>
+  <footer class="wrap"><span>Solar Saver</span><p>Hackathon prototype · Simulated district, real scheduling trade-offs.</p></footer>
+</body>
+</html>
