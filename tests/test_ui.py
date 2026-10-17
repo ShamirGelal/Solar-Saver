@@ -160,7 +160,9 @@ class StaticPagesTests(unittest.TestCase):
                         self.assertEqual(response.status, 200)
                         self.assertTrue(response.read())
                 with urlopen(urljoin(root, "./comparison.json"), timeout=5) as response:
-                    self.assertEqual(json.load(response), json.loads(json.dumps(build_comparison())))
+                    expected = json.loads(json.dumps(build_comparison()))
+                    expected["supports_custom_loads"] = False
+                    self.assertEqual(json.load(response), expected)
                 self.assertEqual({path.name for path in destination.iterdir()},
                                  {"index.html", "app.css", "app.js", "comparison.json", ".nojekyll"})
             finally:

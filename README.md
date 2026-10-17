@@ -14,8 +14,9 @@ It compares three policies:
 3. balanced scheduling using solar supply, grid capacity, priority, preference,
    and fairness penalties.
 
-The current forecaster is intentionally synthetic. It exists so every backend
-component can be developed and tested before the ML artifact is ready.
+The demo uses an intentionally synthetic seasonal forecaster. A separate trained
+weather-aware forecaster is available in the forecasting subsystem; the load
+planner keeps the seasonal fallback so it needs no trained artifact or live weather.
 
 ## Recommended team
 
@@ -51,45 +52,77 @@ This makes implementations replaceable without changing their consumers.
 
 ## Run locally
 
-From this directory:
+From this directory, use Python 3.10+ and install dependencies in an isolated
+environment:
 
 ```bash
-python3 -m unittest discover -s tests -v
-PYTHONPATH=. python3 scripts/run_demo.py
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python -m unittest discover -s tests -v
+PYTHONPATH=. .venv/bin/python scripts/run_demo.py
 ```
 
-The demo uses only the Python standard library. Install `requirements.txt` when
-the forecasting owner begins the data and scikit-learn implementation.
+Install requirements even for the seasonal demo: the forecasting package currently
+exports its trained model eagerly, which imports the ML packages. After installation,
+the seasonal demo itself needs no network connection or trained artifact.
 
 ## Open the demo UI
 
 From the repository root, run:
 
 ```bash
-python -m solar_saver.ui
+.venv/bin/python -m solar_saver.ui
 ```
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in a browser. Python 3.10+
-is required; use `python3` instead of `python` if that is your Python 3 command.
-No packages, build step, trained artifacts, or network access are needed. Stop
+is recommended. Install the dependencies above first; no frontend build step,
+trained artifact, or runtime network access is needed. Stop
 the server with Ctrl+C. If port 8000 is busy, run
-`python -m solar_saver.ui --port 8001` and open that port instead. The server
+`.venv/bin/python -m solar_saver.ui --port 8001` and open that port instead. The server
 listens on your computer's loopback address and is intended for a local demo.
 
-The page compares all three policies, with a selectable 24-hour power chart,
-an accessible hourly data table, completion counts, and the full metrics table.
-“Reload comparison” repeats the same deterministic scenario: October 18, 2026,
-100 synthetic users, seed 42, 300 kW installed solar, 500 kW total-demand
-capacity, and default scheduler weights. It is deliberately a fixed demo rather
-than an experiment editor. The demand is simulated Charlottesville demand,
-not observed utility data. Solar supply uses `SeasonalDemoForecaster`, an
-expected seasonal demo profile, not a trained ML model or live weather forecast.
+The page offers two modes:
+
+- **My loads:** add, edit, and remove up to 100 appliance loads. Editable presets
+  cover EV charging, laundry, dishwashing, battery charging, and water heating;
+  custom names and values are supported. Enter power in kW, whole-hour duration,
+  earliest start, finish deadline, preferred start, priority, and willingness to
+  shift (0–1). The entire duration must fit within the same day's allowed window,
+  including at the preferred start; 24:00 means the end of the day. Presets are
+  simulation assumptions, not measured appliance data. Entries live in the tab
+  and are cleared by a page refresh.
+- **District demo:** the original deterministic 100-user synthetic scenario.
+  “View district demo” restores this comparison without clearing entered loads.
+
+“Compare my loads” runs the three existing scheduling policies on the entered
+loads plus the existing simulated district background. Entered loads replace the
+synthetic flexible population. Both modes use October 18, 2026, seed 42, 300 kW
+installed solar, 500 kW total-demand capacity, and default scheduler weights.
+These remain district-scale simulation settings, not a household service rating.
+Solar supply uses `SeasonalDemoForecaster`, not a trained model or live weather.
+
+Results include a selectable 24-hour power chart, accessible hourly data,
+completion counts, and the full metrics table. In custom mode an appliance table
+shows each load's actual scheduled interval, start-time shift, requested energy,
+and any unfinished work. Policy selection updates both the chart and appliance
+table. Editing or deleting a load hides stale custom results until recomputed.
+“Reload comparison” reruns the most recently requested mode. Critical priority
+is an explicit scheduling order rule, not a guarantee of completion.
 
 The UI calls `run_comparison` and adapts its `SimulationReport` to a JSON response
-at `/comparison.json` (also available at `/api/comparison`); it does not read
+at `GET /comparison.json` (also available at `GET /api/comparison`). Custom
+comparisons use `POST /api/comparison` with a JSON object containing a `workloads`
+list. Each item contains `workload_id`, `category`, `power_kw`, `duration_hours`,
+`earliest_start`, `latest_finish`, `preferred_start`, `priority`, and `flexibility`.
+IDs must be unique. Requests are limited to 100 loads, 64-character names/IDs,
+finite positive power up to 10,000 kW, and a 64 KiB JSON body. Malformed JSON
+returns 400; invalid loads return 422. Missing local dependencies return an
+actionable 503 setup message. Responses include workloads and per-policy
+assignments as well as aggregate metrics. The UI does not read
 saved outputs or private subsystem files.
 This endpoint is a local UI adapter, not a new shared subsystem contract. No
-shared domain types, protocols, or backend algorithms are changed. Backend
+shared domain types, protocols, or backend algorithms are changed. A UI-owned
+`EnteredLoadDemandGenerator` implements the existing demand protocol. Backend
 failures produce an error with a retry button; infeasible coordinated schedules
 are reported instead of replaced with made-up results. Valid scenarios with
 unfinished workloads still show their completion counts and energy metrics.
@@ -105,7 +138,15 @@ optimal and does not guarantee fairness across days.
 UI integration checks are included in the regular test suite:
 
 ```bash
-python -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+Input validation, request handling, static-export capabilities, and the custom
+pipeline can also be tested without ML dependencies or network sockets. These
+tests inject a fixed test solar profile and exercise the real scheduler:
+
+```bash
+python3 -m unittest discover -s tests -p test_ui_inputs.py -v
 ```
 
 ## GitHub Pages demo
@@ -116,7 +157,11 @@ GitHub Pages serves static files, so the deployment workflow runs the existing
 Python pipeline at build time and exports the fixed comparison alongside the
 page. The hosted “Reload comparison” button reloads these precomputed results;
 the local Python server recomputes them. Chart selection and the hourly table
-work in both versions. This does not run Python or train a model in the browser.
+work in both versions. The static export sets `supports_custom_loads` to false:
+the load editor remains available for preparing inputs, while custom comparison
+is disabled with an explanation that it requires the local app. This does not
+run Python or train a model in the browser. Interactive hosted scheduling needs
+a deployed Python backend; the Pages workflow remains a fixed demo.
 
 To build and preview the same static site locally:
 
