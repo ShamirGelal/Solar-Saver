@@ -1,17 +1,23 @@
 """Integration coverage for the local UI's domain adapter and HTTP boundary."""
 
 from dataclasses import asdict
-from http.server import ThreadingHTTPServer
+from functools import partial
+from html.parser import HTMLParser
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
 import threading
 import unittest
 from unittest.mock import patch
 from urllib.error import HTTPError
 from urllib.request import urlopen
+from urllib.parse import urljoin
 
 from solar_saver.domain import SimulationConfig, Strategy
 from solar_saver.pipeline import run_comparison
 from solar_saver.ui.__main__ import DemoHandler, build_comparison
+from solar_saver.ui.export import export_site
 
 
 class QuietHandler(DemoHandler):
@@ -91,6 +97,11 @@ class DemoHTTPTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(payload, json.loads(json.dumps(build_comparison())))
 
+    def test_relative_json_url_also_works_on_local_server(self):
+        with urlopen(self.url + "/comparison.json", timeout=5) as response:
+            self.assertEqual(response.status, 200)
+            self.assertEqual(json.load(response), json.loads(json.dumps(build_comparison())))
+
     def test_infeasible_background_returns_error_without_fake_results(self):
         with patch("solar_saver.ui.__main__.SimulationConfig", return_value=SimulationConfig(grid_capacity_kw=1)):
             status, payload = self.get_json()
@@ -111,6 +122,67 @@ class DemoHTTPTests(unittest.TestCase):
                 urlopen(self.url + path, timeout=5)
             self.assertEqual(result.exception.code, 404)
             result.exception.close()
+
+
+class AssetLinks(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.urls = []
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        if tag == "script" and "src" in values:
+            self.urls.append(values["src"])
+        if tag == "link" and values.get("rel") == "stylesheet":
+            self.urls.append(values["href"])
+
+
+class StaticPagesTests(unittest.TestCase):
+    def test_export_serves_complete_demo_under_repository_subpath(self):
+        with TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "Solar-Saver"
+            export_site(destination)
+            handler = partial(SimpleHTTPRequestHandler, directory=temporary)
+            server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
+            thread = threading.Thread(target=server.serve_forever, daemon=True)
+            thread.start()
+            try:
+                root = f"http://127.0.0.1:{server.server_port}/Solar-Saver/"
+                with urlopen(root, timeout=5) as response:
+                    page = response.read().decode("utf-8")
+                parser = AssetLinks()
+                parser.feed(page)
+                self.assertEqual(len(parser.urls), 2)
+                for asset in parser.urls:
+                    url = urljoin(root, asset)
+                    self.assertTrue(url.startswith(root), url)
+                    with urlopen(url, timeout=5) as response:
+                        self.assertEqual(response.status, 200)
+                        self.assertTrue(response.read())
+                with urlopen(urljoin(root, "./comparison.json"), timeout=5) as response:
+                    self.assertEqual(json.load(response), json.loads(json.dumps(build_comparison())))
+                self.assertEqual({path.name for path in destination.iterdir()},
+                                 {"index.html", "app.css", "app.js", "comparison.json", ".nojekyll"})
+            finally:
+                server.shutdown()
+                server.server_close()
+                thread.join(timeout=2)
+
+    def test_export_is_reproducible(self):
+        with TemporaryDirectory() as temporary:
+            first, second = Path(temporary) / "first", Path(temporary) / "second"
+            export_site(first)
+            export_site(second)
+            self.assertEqual((first / "comparison.json").read_bytes(),
+                             (second / "comparison.json").read_bytes())
+
+    def test_backend_failure_stops_export_before_writing_page(self):
+        with TemporaryDirectory() as temporary:
+            destination = Path(temporary) / "site"
+            with patch("solar_saver.ui.export.build_comparison", side_effect=ValueError("infeasible")):
+                with self.assertRaisesRegex(ValueError, "infeasible"):
+                    export_site(destination)
+            self.assertFalse(destination.exists())
 
 
 if __name__ == "__main__":

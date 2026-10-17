@@ -24,7 +24,7 @@ let selectedPolicy = "balanced";
 
 function validateReport(data) {
   if (!data || !data.strategies || !Object.keys(data.strategies).length) {
-    throw new Error("No comparison results were returned. Try running the comparison again.");
+    throw new Error("No comparison results were returned. Try reloading the comparison.");
   }
   const profile = values => Array.isArray(values) && values.length === 24 && values.every(value => Number.isFinite(value) && value >= 0);
   const count = value => Number.isInteger(value) && value >= 0;
@@ -145,11 +145,11 @@ async function loadComparison() {
   byId("results").hidden = true;
   byId("results").setAttribute("aria-busy", "true");
   byId("error").hidden = true;
-  byId("status").textContent = "Running the offline comparison…";
+  byId("status").textContent = "Loading the comparison…";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch("/api/comparison", {cache: "no-store", signal: controller.signal});
+    const response = await fetch("./comparison.json", {cache: "no-store", signal: controller.signal});
     const data = await response.json();
     if (!response.ok) throw new Error([data.error, data.detail].filter(Boolean).join(" ") || "The comparison could not be completed.");
     validateReport(data);
@@ -162,8 +162,8 @@ async function loadComparison() {
   } catch (error) {
     byId("status").textContent = "";
     byId("error").textContent = error.name === "AbortError"
-      ? "The comparison took too long. Check the local server, then run it again."
-      : error instanceof TypeError ? "Could not reach the local backend. Check that the demo server is running, then try again." : error.message;
+      ? "The comparison took too long to load. Please try again."
+      : error instanceof TypeError ? "Could not load the comparison data. Check your connection, then try again." : error.message;
     byId("error").hidden = false;
   } finally {
     clearTimeout(timeout);

@@ -96,7 +96,7 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         path = urlsplit(self.path).path
-        if path == "/api/comparison":
+        if path in ("/api/comparison", "/comparison.json"):
             try:
                 payload = build_comparison()
                 self._json(HTTPStatus.OK, payload)
