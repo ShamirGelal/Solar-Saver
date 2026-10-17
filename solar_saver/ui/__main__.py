@@ -36,6 +36,7 @@ def serialize_report(report: SimulationReport, *, mode: str = "demo") -> dict:
         "supports_custom_loads": True,
         "target_date": DEMO_DATE.isoformat(),
         "model_name": report.solar_profile.model_name,
+        "forecast_metadata": dict(report.solar_profile.metadata),
         "workload_count": len(report.scenario.workloads),
         "critical_workload_count": sum(
             load.priority is Priority.CRITICAL for load in report.scenario.workloads
@@ -70,8 +71,8 @@ def build_comparison(workloads: tuple[Workload, ...] | None = None, *, forecaste
     if forecaster is None:
         # Keep the input editor/server importable before optional ML packages
         # are installed. The forecasting package currently imports its model.
-        from solar_saver.forecasting import SeasonalDemoForecaster
-        forecaster = SeasonalDemoForecaster()
+        from solar_saver.runtime import RuntimeForecaster
+        forecaster = RuntimeForecaster()
     report = run_comparison(
         forecast_request=ForecastRequest(
             latitude=38.0293, longitude=-78.4767, target_date=DEMO_DATE,

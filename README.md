@@ -14,9 +14,9 @@ It compares three policies:
 3. balanced scheduling using solar supply, grid capacity, priority, preference,
    and fairness penalties.
 
-The demo uses an intentionally synthetic seasonal forecaster. A separate trained
-weather-aware forecaster is available in the forecasting subsystem; the load
-planner keeps the seasonal fallback so it needs no trained artifact or live weather.
+The application uses the trained weather-aware forecaster when its local artifact
+is available. Missing artifacts or unavailable weather data trigger a clearly
+labeled synthetic seasonal fallback.
 
 ## Recommended team
 
@@ -64,7 +64,23 @@ PYTHONPATH=. .venv/bin/python scripts/run_demo.py
 
 Install requirements even for the seasonal demo: the forecasting package currently
 exports its trained model eagerly, which imports the ML packages. After installation,
-the seasonal demo itself needs no network connection or trained artifact.
+explicit seasonal demo mode needs no network connection or trained artifact.
+
+To produce the trained artifact, follow
+[`solar_saver/forecasting/README.md`](solar_saver/forecasting/README.md).
+The runtime loads `artifacts/solar_forecaster.joblib` relative to the repository,
+and requests live Open-Meteo weather with a five-second connection/read timeout.
+Missing artifacts, weather request failures, and unusable weather responses
+select `SeasonalDemoForecaster`; its original synthetic warning is retained and
+a fallback reason is added. Invalid model artifacts and unrelated backend errors
+remain errors. The command-line demo prints the model and warnings to stderr,
+keeping its existing metrics JSON on stdout.
+
+For a deterministic offline run, set `SOLAR_SAVER_FORECAST_MODE=demo` (PowerShell:
+`$env:SOLAR_SAVER_FORECAST_MODE='demo'`). Set it to `auto` to restore automatic
+selection. This setting applies to the CLI, local UI server, and static exporter.
+Dependencies must still be installed for offline mode. Tests use controlled
+forecasters and weather responses; they do not require a local artifact or internet.
 
 ## Open the demo UI
 
@@ -75,8 +91,9 @@ From the repository root, run:
 ```
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in a browser. Python 3.10+
-is recommended. Install the dependencies above first; no frontend build step,
-trained artifact, or runtime network access is needed. Stop
+is recommended. Install the dependencies above first; no frontend build step is
+needed. Automatic trained prediction needs an artifact and internet; the seasonal
+fallback works offline. Stop
 the server with Ctrl+C. If port 8000 is busy, run
 `.venv/bin/python -m solar_saver.ui --port 8001` and open that port instead. The server
 listens on your computer's loopback address and is intended for a local demo.
@@ -91,7 +108,7 @@ The page offers two modes:
   including at the preferred start; 24:00 means the end of the day. Presets are
   simulation assumptions, not measured appliance data. Entries live in the tab
   and are cleared by a page refresh.
-- **District demo:** the original deterministic 100-user synthetic scenario.
+- **District demo:** the original deterministic 100-household synthetic scenario.
   “View district demo” restores this comparison without clearing entered loads.
 
 “Compare my loads” runs the three existing scheduling policies on the entered
@@ -99,7 +116,7 @@ loads plus the existing simulated district background. Entered loads replace the
 synthetic flexible population. Both modes use October 18, 2026, seed 42, 300 kW
 installed solar, 500 kW total-demand capacity, and default scheduler weights.
 These remain district-scale simulation settings, not a household service rating.
-Solar supply uses `SeasonalDemoForecaster`, not a trained model or live weather.
+Solar supply uses the same automatic trained-model selection and labeled fallback as the district demo. The selected model and forecast warnings appear above the results.
 
 Results include a selectable 24-hour power chart, accessible hourly data,
 completion counts, and the full metrics table. In custom mode an appliance table
@@ -142,7 +159,7 @@ UI integration checks are included in the regular test suite:
 ```
 
 Input validation, request handling, static-export capabilities, and the custom
-pipeline can also be tested without ML dependencies or network sockets. These
+pipeline can also be tested without live weather or network sockets. These
 tests inject a fixed test solar profile and exercise the real scheduler:
 
 ```bash
@@ -162,6 +179,13 @@ the load editor remains available for preparing inputs, while custom comparison
 is disabled with an explanation that it requires the local app. This does not
 run Python or train a model in the browser. Interactive hosted scheduling needs
 a deployed Python backend; the Pages workflow remains a fixed demo.
+
+Export uses the same automatic model selection. GitHub's clean checkout has no
+trained artifact, so the current workflow publishes a labeled seasonal fallback.
+A local export with an artifact and available weather publishes trained results.
+To deploy trained results from CI, provision the artifact separately before the
+export step; never commit it to Git. Published results retain the model and
+warning from the time of export.
 
 To build and preview the same static site locally:
 

@@ -1,6 +1,5 @@
 """Custom-load integration checks that require neither ML packages nor sockets."""
 
-from dataclasses import replace
 from email.message import Message
 from io import BytesIO
 import json
@@ -89,9 +88,10 @@ class EnteredLoadTests(unittest.TestCase):
         profile = SolarProfile((100.0,) * 24, "test")
         config = SimulationConfig(number_of_users=100)
         city = EnteredLoadDemandGenerator(loads).generate(profile, config)
-        background = SyntheticDemandGenerator().generate(profile, replace(config, number_of_users=0))
+        background = SyntheticDemandGenerator().generate(profile, config)
         self.assertEqual(city.workloads, loads)
         self.assertEqual(city.base_demand_kw, background.base_demand_kw)
+        self.assertEqual(max(city.base_demand_kw), 185.0)
         self.assertEqual(city.solar_supply_kw, profile.supply_kw)
         self.assertEqual(city.grid_capacity_kw, background.grid_capacity_kw)
         self.assertEqual(city, EnteredLoadDemandGenerator(loads).generate(profile, config))

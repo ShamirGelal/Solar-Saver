@@ -72,7 +72,7 @@ class EnteredLoadDemandGenerator:
 
     def generate(self, solar_profile: SolarProfile, config: SimulationConfig) -> CityScenario:
         background = SyntheticDemandGenerator().generate(
-            solar_profile, replace(config, number_of_users=0),
+            solar_profile, config,
         )
         return replace(background, workloads=self.workloads)
 

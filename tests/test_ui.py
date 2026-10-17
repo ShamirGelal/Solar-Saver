@@ -5,6 +5,7 @@ from functools import partial
 from html.parser import HTMLParser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import threading
@@ -25,7 +26,26 @@ class QuietHandler(DemoHandler):
         pass
 
 
-class DemoIntegrationTests(unittest.TestCase):
+class OfflineDemoTestCase(unittest.TestCase):
+    def setUp(self):
+        mode = patch.dict(os.environ, {"SOLAR_SAVER_FORECAST_MODE": "demo"})
+        mode.start()
+        self.addCleanup(mode.stop)
+
+
+class DemoIntegrationTests(OfflineDemoTestCase):
+    def test_page_describes_household_requests_and_demand_limits(self):
+        source = Path(__file__).parents[1] / "solar_saver" / "ui"
+        page = (source / "index.html").read_text(encoding="utf-8")
+        client = (source / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("100 synthetic households", page)
+        self.assertIn("One flexible request is modeled per household", page)
+        self.assertIn("Demand is synthetic and uncalibrated", page)
+        self.assertNotIn("synthetic users", page)
+        self.assertIn("household requests completed", client)
+        self.assertIn("Household-request completion", client)
+
     def test_adapter_uses_pipeline_and_preserves_profiles_metrics_and_completion(self):
         with patch("solar_saver.ui.__main__.run_comparison", wraps=run_comparison) as pipeline:
             payload = build_comparison()
@@ -35,6 +55,7 @@ class DemoIntegrationTests(unittest.TestCase):
         self.assertEqual(payload["workload_count"], 100)
         self.assertEqual(payload["critical_workload_count"], 0)
         self.assertEqual(payload["model_name"], "seasonal-demo-baseline")
+        self.assertEqual(payload["forecast_metadata"], domain_report.solar_profile.metadata)
         self.assertEqual(payload["solar_supply_kw"], domain_report.solar_profile.supply_kw)
         self.assertEqual(len(payload["solar_supply_kw"]), 24)
         for strategy, item in domain_report.strategies.items():
@@ -62,7 +83,7 @@ class DemoIntegrationTests(unittest.TestCase):
         self.assertEqual(balanced["completed_count"] + balanced["unscheduled_count"], 100)
 
 
-class DemoHTTPTests(unittest.TestCase):
+class DemoHTTPTests(OfflineDemoTestCase):
     @classmethod
     def setUpClass(cls):
         cls.server = ThreadingHTTPServer(("127.0.0.1", 0), QuietHandler)
@@ -137,7 +158,7 @@ class AssetLinks(HTMLParser):
             self.urls.append(values["href"])
 
 
-class StaticPagesTests(unittest.TestCase):
+class StaticPagesTests(OfflineDemoTestCase):
     def test_export_serves_complete_demo_under_repository_subpath(self):
         with TemporaryDirectory() as temporary:
             destination = Path(temporary) / "Solar-Saver"
