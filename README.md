@@ -99,7 +99,7 @@ listens on your computer's loopback address and is intended for a local demo.
 The page compares all three policies, with a selectable 24-hour power chart,
 an accessible hourly data table, completion counts, and the full metrics table.
 “Reload comparison” repeats the same workload scenario: October 18, 2026,
-100 synthetic users, seed 42, 300 kW installed solar, 500 kW total-demand
+100 synthetic households with one flexible request each, seed 42, 300 kW installed solar, 500 kW total-demand
 capacity, and default scheduler weights. It is deliberately a fixed demo rather
 than an experiment editor. The demand is simulated Charlottesville demand,
 not observed utility data. The page displays the selected model and any fallback

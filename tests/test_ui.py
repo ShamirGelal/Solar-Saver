@@ -34,6 +34,18 @@ class OfflineDemoTestCase(unittest.TestCase):
 
 
 class DemoIntegrationTests(OfflineDemoTestCase):
+    def test_page_describes_household_requests_and_demand_limits(self):
+        source = Path(__file__).parents[1] / "solar_saver" / "ui"
+        page = (source / "index.html").read_text(encoding="utf-8")
+        client = (source / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn("100 synthetic households", page)
+        self.assertIn("One flexible request is modeled per household", page)
+        self.assertIn("Demand is synthetic and uncalibrated", page)
+        self.assertNotIn("synthetic users", page)
+        self.assertIn("household requests completed", client)
+        self.assertIn("Household-request completion", client)
+
     def test_adapter_uses_pipeline_and_preserves_profiles_metrics_and_completion(self):
         with patch("solar_saver.ui.__main__.run_comparison", wraps=run_comparison) as pipeline:
             payload = build_comparison()

@@ -1,8 +1,8 @@
 "use strict";
 
 const policies = [
-  {key: "uncoordinated", name: "Uncoordinated", tag: "Baseline", description: "Workloads run as close to their preferred times as possible."},
-  {key: "solar_only", name: "Solar-only", tag: "Solar first", description: "Shift toward solar, respecting capacity and allowed windows."},
+  {key: "uncoordinated", name: "Uncoordinated", tag: "Baseline", description: "Household requests run as close to their preferred times as possible."},
+  {key: "solar_only", name: "Solar-only", tag: "Solar first", description: "Shift household requests toward solar, respecting capacity and allowed windows."},
   {key: "balanced", name: "Balanced", tag: "Multiple goals", description: "Balance solar with capacity, preferences, priority, and fairness."},
 ];
 const metricRows = [
@@ -13,8 +13,8 @@ const metricRows = [
   ["Peak total demand", "peak_demand_kw", "kW"],
   ["Average preference shift", "average_preference_deviation_hours", "h"],
   ["Maximum preference shift", "maximum_preference_deviation_hours", "h"],
-  ["Workload completion", "completion_percent", "%"],
-  ["Critical workload completion", "critical_completion_percent", "%"],
+  ["Household-request completion", "completion_percent", "%"],
+  ["Critical-request completion", "critical_completion_percent", "%"],
   ["Capacity violation hours", "capacity_violation_hours", "h"],
 ];
 const number = (value, digits = 1) => new Intl.NumberFormat("en-US", {maximumFractionDigits: digits, minimumFractionDigits: digits}).format(value);
@@ -54,7 +54,7 @@ function renderCards() {
       <div class="match-label">of served energy matched by solar</div>
       <div class="meter" aria-hidden="true"><div class="meter-fill" data-match="${m.renewable_match_percent}"></div></div>
       <div class="card-stats"><div><strong>${number(m.grid_energy_kwh)}</strong><span>kWh drawn from the grid</span></div><div><strong>${number(m.average_preference_deviation_hours, 2)} h</strong><span>average preference shift</span></div></div>
-      <div class="card-health"><span class="${item.unscheduled_count ? "warn" : ""}">${item.completed_count}/${report.workload_count} workloads completed</span><span class="${m.capacity_violation_hours ? "warn" : ""}">${m.capacity_violation_hours} h over capacity</span></div>
+      <div class="card-health"><span class="${item.unscheduled_count ? "warn" : ""}">${item.completed_count}/${report.workload_count} household requests completed</span><span class="${m.capacity_violation_hours ? "warn" : ""}">${m.capacity_violation_hours} h over capacity</span></div>
     </article>`;
   }).join("");
   document.querySelectorAll(".meter-fill").forEach(element => {
@@ -75,7 +75,7 @@ function renderMetrics() {
       const cell = document.createElement("td");
       const value = key === "served_energy_kwh" ? report.strategies[policy.key][key] : report.strategies[policy.key].metrics[key];
       cell.textContent = key === "critical_completion_percent" && !report.critical_workload_count
-        ? "No critical workloads" : `${number(value, key === "average_preference_deviation_hours" ? 2 : 1)} ${unit}`;
+        ? "No critical requests" : `${number(value, key === "average_preference_deviation_hours" ? 2 : 1)} ${unit}`;
       row.append(cell);
     }
     body.append(row);
@@ -92,7 +92,7 @@ function svgElement(tag, attributes = {}, text = "") {
 function renderChart() {
   const item = report.strategies[selectedPolicy];
   const name = policies.find(policy => policy.key === selectedPolicy).name;
-  byId("chart-summary").textContent = `${name} policy · ${item.completed_count} of ${report.workload_count} workloads completed${item.unscheduled_count ? ` · ${item.unscheduled_count} could not be scheduled` : ""}`;
+  byId("chart-summary").textContent = `${name} policy · ${item.completed_count} of ${report.workload_count} household requests completed${item.unscheduled_count ? ` · ${item.unscheduled_count} could not be scheduled` : ""}`;
   const svg = svgElement("svg", {viewBox: "0 0 1080 350", role: "img", "aria-labelledby": "plot-title plot-description"});
   svg.append(svgElement("title", {id: "plot-title"}, `${name}: 24-hour solar supply and total demand`));
   svg.append(svgElement("desc", {id: "plot-description"}, "Hourly step chart. Gold shows expected solar supply; green shows total demand; the dashed line shows capacity. The hourly data table below provides exact values in kW."));
