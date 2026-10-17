@@ -80,6 +80,7 @@ class PreparedModelData:
     training: ModelSplit
     validation: ModelSplit
     test: ModelSplit
+    historical_encoder: MonthHourMeanEncoder
     feature_names: tuple[str, ...] = MODEL_FEATURE_COLUMNS
 
 
@@ -173,7 +174,7 @@ def add_deterministic_features(
 ) -> pd.DataFrame:
     """Add calendar and approximate solar-position features."""
 
-    _require_columns(history, ("timestamp_utc", TARGET_COLUMN))
+    _require_columns(history, ("timestamp_utc",))
     frame = history.copy()
     timestamps_utc = pd.to_datetime(frame["timestamp_utc"], utc=True, errors="raise")
     timestamps_local = timestamps_utc.dt.tz_convert(local_timezone)
@@ -226,6 +227,7 @@ def prepare_model_data(
         training=_to_model_split(training),
         validation=_to_model_split(validation),
         test=_to_model_split(test),
+        historical_encoder=encoder,
     )
 
 
