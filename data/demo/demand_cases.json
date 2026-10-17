@@ -1,0 +1,13 @@
+{
+  "description": "Synthetic demand-owner benchmark recipes; not observed Charlottesville data or a shared API.",
+  "household_counts": [100, 500],
+  "seeds": [7, 42, 2026],
+  "generation_timing": {"repeats": 7, "calls_per_repeat": 100},
+  "installed_solar_kw_per_household": 3.0,
+  "cases": [
+    {"name": "normal", "capacity_kw_per_household": 5.0, "window_mode": "generated"},
+    {"name": "evening_congestion", "capacity_kw_per_household": 5.0, "window_mode": "evening"},
+    {"name": "constrained_capacity", "capacity_kw_per_household": 1.9, "window_mode": "generated"},
+    {"name": "no_flexibility", "capacity_kw_per_household": 5.0, "window_mode": "fixed"}
+  ]
+}
