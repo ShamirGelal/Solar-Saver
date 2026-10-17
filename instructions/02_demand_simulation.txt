@@ -1,0 +1,80 @@
+SOLAR SAVER AGENT ASSIGNMENT: SYNTHETIC CITY DEMAND
+
+MISSION
+Create a credible, deterministic synthetic Charlottesville workload generator.
+Your component supplies the scheduler with fixed demand, flexible workloads,
+solar supply, and capacity limits. It does not decide when workloads run.
+
+READ FIRST
+- README.md
+- solar_saver/domain.py
+- solar_saver/contracts.py
+- solar_saver/demand.py
+- tests/test_contracts.py
+
+FILES YOU OWN
+- solar_saver/demand.py
+- tests/test_demand.py (create this)
+- data/demo/* if a small documented demo fixture is helpful
+
+FILES YOU MUST NOT CHANGE WITHOUT TEAM AGREEMENT
+- solar_saver/domain.py
+- solar_saver/contracts.py
+- solar_saver/forecasting/*
+- solar_saver/scheduling.py
+- solar_saver/metrics.py
+- solar_saver/pipeline.py
+
+REQUIRED PUBLIC CONTRACT
+Maintain:
+
+    generate(
+        solar_profile: SolarProfile,
+        config: SimulationConfig,
+    ) -> CityScenario
+
+The same random seed and inputs must produce the same CityScenario.
+
+MVP REQUIREMENTS
+- Exactly 24 hourly slots.
+- A fixed background-demand profile.
+- At least four flexible workload categories.
+- Each workload has power, duration, allowed window, preferred time, priority,
+  and flexibility.
+- Every workload must fit inside its own allowed window.
+- Generated assumptions must be clearly documented as synthetic.
+
+RECOMMENDED CATEGORIES
+- EV charging
+- Laundry
+- Dishwasher
+- Battery charging
+- Water heating
+
+Use realistic-looking ranges, but do not describe synthetic assumptions as
+measured Charlottesville behavior. Keep critical infrastructure out of the MVP
+unless the scheduler team has agreed on hard safety constraints.
+
+ACCEPTANCE TESTS
+- Same seed gives identical scenarios.
+- Different seeds change the workload population.
+- Every profile has 24 finite, nonnegative values.
+- Every workload has a unique ID.
+- Every workload fits within earliest_start and latest_finish.
+- Preferred starts lie inside valid windows.
+- Total requested flexible energy can be calculated exactly.
+- Existing tests/test_contracts.py continues to pass.
+
+DELIVERABLE FOR INTEGRATION
+Tell the integration owner:
+- workload categories and assumptions;
+- typical scenario size;
+- expected runtime for 100 and 500 users;
+- any proposed domain-contract change before making it.
+
+DO NOT BUILD
+- Solar prediction
+- Schedule placement
+- Schedule metrics
+- UI components
+- Claims about real Charlottesville demand

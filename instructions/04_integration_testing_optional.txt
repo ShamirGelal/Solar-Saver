@@ -1,0 +1,66 @@
+SOLAR SAVER OPTIONAL FOURTH ASSIGNMENT: INTEGRATION AND TESTING
+
+MISSION
+Keep main runnable while the three subsystem owners work independently. Own the
+end-to-end pipeline, smoke tests, reproducible demo output, dependency hygiene,
+and later the UI boundary. Do not rewrite another owner's algorithm merely to
+make integration easier; enforce the shared contracts instead.
+
+READ FIRST
+- README.md
+- every file in solar_saver/
+- every assignment in instructions/
+
+FILES YOU OWN
+- solar_saver/pipeline.py
+- scripts/run_demo.py
+- tests/test_contracts.py
+- tests/test_pipeline.py (create this)
+- README.md
+- requirements.txt
+- future UI files after backend integration
+
+FILES YOU MUST NOT CHANGE WITHOUT THE OWNER'S AGREEMENT
+- solar_saver/data/*
+- solar_saver/forecasting/*
+- solar_saver/demand.py
+- solar_saver/scheduling.py
+- solar_saver/metrics.py
+- solar_saver/domain.py and contracts.py after assignments begin
+
+STABLE UI ENTRY POINT
+Maintain:
+
+    run_comparison(
+        forecast_request=...,
+        simulation_config=...,
+        scheduler_weights=...,
+        forecaster=...,
+        demand_generator=...,
+        scheduler=...,
+    ) -> SimulationReport
+
+The future UI should call this function and consume SimulationReport. It should
+not import scikit-learn, inspect NASA files, or call private scheduler helpers.
+
+INTEGRATION ORDER
+1. Merge contracts and current smoke test.
+2. Merge demand generator and rerun all tests.
+3. Merge scheduler and metrics and rerun all tests.
+4. Merge real forecaster last; retain the demo fallback.
+5. Record one deterministic JSON output as a demo fixture if useful.
+6. Only then begin UI work.
+
+ACCEPTANCE TESTS
+- A fresh clone can run the documented commands.
+- Demo works without network access using SeasonalDemoForecaster.
+- Real forecaster failure can fall back cleanly for demonstration.
+- All three strategies appear in SimulationReport.
+- No subsystem reads another subsystem's private files.
+- No secret or large generated artifact is committed.
+
+MERGE POLICY
+- Reject changes that silently alter shared domain fields.
+- Require tests for contract or units changes.
+- Resolve units explicitly: hourly slots, kW profiles, kWh aggregate metrics.
+- Keep output labels honest: demand is shifted, not necessarily reduced.

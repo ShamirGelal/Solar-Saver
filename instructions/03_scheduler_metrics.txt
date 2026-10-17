@@ -1,0 +1,93 @@
+SOLAR SAVER AGENT ASSIGNMENT: SCHEDULING AND METRICS
+
+MISSION
+Implement and validate the algorithms that place flexible workloads. Compare an
+uncoordinated baseline, a solar-only policy, and a balanced policy. The balanced
+policy must consider solar utilization, capacity, user preference, priority, and
+fairness without changing total requested workload energy.
+
+READ FIRST
+- README.md
+- solar_saver/domain.py
+- solar_saver/contracts.py
+- solar_saver/scheduling.py
+- solar_saver/metrics.py
+- tests/test_contracts.py
+
+FILES YOU OWN
+- solar_saver/scheduling.py
+- solar_saver/metrics.py
+- tests/test_scheduler.py (create this)
+- tests/test_metrics.py (create this)
+
+FILES YOU MUST NOT CHANGE WITHOUT TEAM AGREEMENT
+- solar_saver/domain.py
+- solar_saver/contracts.py
+- solar_saver/forecasting/*
+- solar_saver/demand.py
+- solar_saver/pipeline.py
+
+REQUIRED PUBLIC CONTRACT
+Maintain:
+
+    schedule(
+        scenario: CityScenario,
+        strategy: Strategy,
+        weights: SchedulerWeights,
+    ) -> ScheduleResult
+
+All aggregate arrays must match scenario.horizon_hours.
+
+STRATEGIES
+UNCOORDINATED:
+- Place each task as close to its preferred time as possible.
+- It may expose capacity violations; those violations are a baseline metric.
+
+SOLAR_ONLY:
+- Reduce incremental grid draw while obeying workload windows and capacity.
+- Ignore preference except for deterministic tie-breaking.
+
+BALANCED:
+- Reduce incremental grid draw.
+- Penalize preference deviation.
+- Penalize approaching the capacity limit.
+- Penalize large individual deviations more than several small deviations.
+- Give important workloads more protection from displacement.
+
+The existing greedy scheduler is a working reference, not a final optimizer.
+Improve it only after its invariants are protected by tests. A mixed-integer
+optimizer is optional, not required.
+
+REQUIRED METRICS
+- grid energy used;
+- solar energy used;
+- unused solar energy;
+- renewable matching percentage;
+- peak demand;
+- average and maximum preference deviation;
+- overall completion percentage;
+- critical completion percentage;
+- capacity-violation hours.
+
+ACCEPTANCE TESTS
+- A scheduled task appears no more than once.
+- Assignments remain inside allowed windows.
+- Assignment duration matches workload duration.
+- Balanced and solar-only schedules obey capacity.
+- Scheduled flexible energy is conserved for all completed workloads.
+- Metrics recompute correctly from a small hand-calculated scenario.
+- Algorithms are deterministic.
+- Existing tests/test_contracts.py continues to pass.
+
+DELIVERABLE FOR INTEGRATION
+Tell the integration owner:
+- algorithm complexity;
+- behavior when no feasible slot exists;
+- meaning and sensible ranges of every SchedulerWeights value;
+- known fairness limitations.
+
+DO NOT BUILD
+- Solar model training
+- Workload generation
+- UI charts
+- AI-based judgments about which person deserves energy

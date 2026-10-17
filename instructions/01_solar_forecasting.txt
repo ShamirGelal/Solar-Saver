@@ -1,0 +1,83 @@
+SOLAR SAVER AGENT ASSIGNMENT: SOLAR DATA AND FORECASTING
+
+MISSION
+Implement the real solar forecasting subsystem while preserving the existing
+SolarForecaster API. Your output is a 24-hour SolarProfile measured in simulated
+aggregate kW. Other teammates must remain able to run their work without your
+branch by using SeasonalDemoForecaster.
+
+READ FIRST
+- README.md
+- solar_saver/domain.py
+- solar_saver/contracts.py
+- solar_saver/forecasting/baseline.py
+- tests/test_contracts.py
+
+FILES YOU OWN
+- solar_saver/data/*
+- solar_saver/forecasting/*
+- scripts/train_model.py (create this)
+- tests/test_solar_data.py (create this)
+- tests/test_solar_model.py (create this)
+
+FILES YOU MUST NOT CHANGE WITHOUT TEAM AGREEMENT
+- solar_saver/domain.py
+- solar_saver/contracts.py
+- solar_saver/demand.py
+- solar_saver/scheduling.py
+- solar_saver/metrics.py
+- solar_saver/pipeline.py
+
+REQUIRED PUBLIC CONTRACT
+Create a forecaster class with:
+
+    predict(request: ForecastRequest) -> SolarProfile
+
+The returned supply_kw must:
+- contain exactly request.horizon_hours values;
+- contain no NaN, infinity, or negative values;
+- use aggregate simulated kW, not raw irradiance;
+- include a useful model_name and metadata.
+
+IMPLEMENTATION TARGET
+1. Download and cache hourly NASA POWER data for Charlottesville.
+2. Validate missing values and timestamps.
+3. Build only features that are available at prediction time.
+4. Use chronological train/validation/test splits.
+5. Implement a month/hour historical-average baseline.
+6. Train HistGradientBoostingRegressor or another agreed tabular regressor.
+7. Evaluate MAE and RMSE against the baseline.
+8. Save the fitted pipeline with joblib under artifacts/.
+9. Implement loading and prediction behind SolarForecaster.
+10. Preserve SeasonalDemoForecaster as the offline fallback.
+
+DATA-LEAKAGE RULES
+- Do not random-split time-series rows.
+- Do not use future irradiance as an input.
+- Shift rolling windows before computing them.
+- If using future weather fields, document where those fields would be obtained
+  at prediction time. Otherwise describe the output as expected solar supply,
+  not a weather forecast.
+
+ACCEPTANCE TESTS
+- Repeated prediction with the same artifact and request is deterministic.
+- Prediction contains 24 finite, nonnegative values.
+- Nighttime values are zero or near zero and are clipped appropriately.
+- Training dates precede validation dates; validation precedes test dates.
+- Evaluation reports the baseline and trained-model metrics.
+- Existing tests/test_contracts.py continues to pass.
+
+DELIVERABLE FOR INTEGRATION
+Tell the integration owner:
+- the concrete forecaster class and import path;
+- the artifact path;
+- required dependencies;
+- commands for training and prediction;
+- model limitations and exact units.
+
+DO NOT BUILD
+- UI components
+- workload generation
+- scheduling logic
+- user-priority prediction
+- carbon-savings claims
