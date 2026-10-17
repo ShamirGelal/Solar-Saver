@@ -61,6 +61,52 @@ PYTHONPATH=. python3 scripts/run_demo.py
 The demo uses only the Python standard library. Install `requirements.txt` when
 the forecasting owner begins the data and scikit-learn implementation.
 
+## Open the demo UI
+
+From the repository root, run:
+
+```bash
+python -m solar_saver.ui
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in a browser. Python 3.10+
+is required; use `python3` instead of `python` if that is your Python 3 command.
+No packages, build step, trained artifacts, or network access are needed. Stop
+the server with Ctrl+C. If port 8000 is busy, run
+`python -m solar_saver.ui --port 8001` and open that port instead. The server
+listens on your computer's loopback address and is intended for a local demo.
+
+The page compares all three policies, with a selectable 24-hour power chart,
+an accessible hourly data table, completion counts, and the full metrics table.
+“Run comparison” repeats the same deterministic scenario: October 18, 2026,
+100 synthetic users, seed 42, 300 kW installed solar, 500 kW total-demand
+capacity, and default scheduler weights. It is deliberately a fixed demo rather
+than an experiment editor. The demand is simulated Charlottesville demand,
+not observed utility data. Solar supply uses `SeasonalDemoForecaster`, an
+expected seasonal demo profile, not a trained ML model or live weather forecast.
+
+The UI calls `run_comparison` and adapts its `SimulationReport` to a JSON response
+at `/api/comparison`; it does not read saved outputs or private subsystem files.
+This endpoint is a local UI adapter, not a new shared subsystem contract. No
+shared domain types, protocols, or backend algorithms are changed. Backend
+failures produce an error with a retry button; infeasible coordinated schedules
+are reported instead of replaced with made-up results. Valid scenarios with
+unfinished workloads still show their completion counts and energy metrics.
+
+Chart values are kW; one-hour slots sum to kWh in the metrics. Scheduling shifts
+electricity use rather than inherently reducing requested energy. Read grid
+energy alongside completion: unfinished work can reduce served energy. Average
+preference deviation covers completed workloads only; a “No critical workloads”
+label avoids presenting the backend's empty-set completion convention as evidence
+of critical-load protection. Greedy scheduling is deterministic, but not globally
+optimal and does not guarantee fairness across days.
+
+UI integration checks are included in the regular test suite:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
 ## Branch ownership
 
 Suggested branches:
