@@ -7,16 +7,20 @@ const policies = [
 ];
 const metricRows = [
   ["Grid energy used", "grid_energy_kwh", "kWh"],
-  ["Solar energy used", "solar_used_kwh", "kWh"],
-  ["Unused solar energy", "unused_solar_kwh", "kWh"],
   ["Renewable matching", "renewable_match_percent", "%"],
   ["Peak total demand", "peak_demand_kw", "kW"],
   ["Average preference shift", "average_preference_deviation_hours", "h"],
-  ["Maximum preference shift", "maximum_preference_deviation_hours", "h"],
   ["Household-request completion", "completion_percent", "%"],
-  ["Critical-request completion", "critical_completion_percent", "%"],
   ["Capacity violation hours", "capacity_violation_hours", "h"],
 ];
+const technicalMetricRows = [
+  ["Solar energy used", "solar_used_kwh", "kWh"],
+  ["Unused solar energy", "unused_solar_kwh", "kWh"],
+  ["Maximum preference shift", "maximum_preference_deviation_hours", "h"],
+  ["Critical-request completion", "critical_completion_percent", "%"],
+  ["Total served energy", "served_energy_kwh", "kWh"],
+];
+const allMetricRows = [...metricRows, ...technicalMetricRows];
 const number = (value, digits = 1) => new Intl.NumberFormat("en-US", {maximumFractionDigits: digits, minimumFractionDigits: digits}).format(value);
 const byId = id => document.getElementById(id);
 let report;
@@ -56,6 +60,7 @@ function resetForm() {
   byId("form-title").textContent = "Add an appliance";
   byId("save-load").textContent = "+ Add load";
   byId("cancel-edit").hidden = true;
+  byId("advanced-settings").open = false;
   fillForm(presets.ev);
   setEditorButtons();
 }
@@ -175,13 +180,16 @@ function validateReport(data) {
     if (!item || ![item.total_demand_kw, item.grid_draw_kw, item.solar_used_kw].every(profile)
         || !count(item.completed_count) || !count(item.unscheduled_count)
         || !Number.isFinite(item.served_energy_kwh)
-        || !metricRows.every(([, key]) => Number.isFinite(item.metrics?.[key]))) {
+        || !allMetricRows.every(([, key]) => Number.isFinite(
+          key === "served_energy_kwh" ? item[key] : item.metrics?.[key]
+        ))) {
       throw new Error("The backend returned an incomplete policy comparison.");
     }
   }
 }
 
 function renderCards() {
+  const requestLabel = report.mode === "custom" ? "loads" : "household requests";
   byId("policy-cards").innerHTML = policies.map(policy => {
     const item = report.strategies[policy.key];
     const m = item.metrics;
@@ -192,7 +200,7 @@ function renderCards() {
       <div class="match-label">of served energy matched by solar</div>
       <div class="meter" aria-hidden="true"><div class="meter-fill" data-match="${m.renewable_match_percent}"></div></div>
       <div class="card-stats"><div><strong>${number(m.grid_energy_kwh)}</strong><span>kWh drawn from the grid</span></div><div><strong>${number(m.average_preference_deviation_hours, 2)} h</strong><span>average preference shift</span></div></div>
-      <div class="card-health"><span class="${item.unscheduled_count ? "warn" : ""}">${item.completed_count}/${report.workload_count} household requests completed</span><span class="${m.capacity_violation_hours ? "warn" : ""}">${m.capacity_violation_hours} h over capacity</span></div>
+      <div class="card-health"><span class="${item.unscheduled_count ? "warn" : ""}">${item.completed_count}/${report.workload_count} ${requestLabel} completed</span><span class="${m.capacity_violation_hours ? "warn" : ""}">${m.capacity_violation_hours} h over capacity</span></div>
     </article>`;
   }).join("");
   document.querySelectorAll(".meter-fill").forEach(element => {
@@ -201,9 +209,17 @@ function renderCards() {
 }
 
 function renderMetrics() {
-  const body = byId("metrics-table").querySelector("tbody");
+  renderMetricTable("metrics-table", metricRows);
+  renderMetricTable("metrics-extra-table", technicalMetricRows);
+}
+
+function renderMetricTable(tableId, rows) {
+  const body = byId(tableId).querySelector("tbody");
   body.replaceChildren();
-  for (const [label, key, unit] of [...metricRows, ["Total served energy", "served_energy_kwh", "kWh"]]) {
+  for (const [originalLabel, key, unit] of rows) {
+    const label = report.mode === "custom" && originalLabel === "Household-request completion"
+      ? "Load completion" : report.mode === "custom" && originalLabel === "Critical-request completion"
+        ? "Critical-load completion" : originalLabel;
     const row = document.createElement("tr");
     const heading = document.createElement("th");
     heading.scope = "row";
@@ -307,6 +323,8 @@ async function loadComparison(mode = comparisonMode) {
     byId("comparison-context").textContent = data.mode === "custom"
       ? `My ${data.workload_count} loads + simulated district background`
       : "District demo · 100 synthetic household requests";
+    byId("metrics-step").textContent = data.mode === "custom"
+      ? "05 / THE TRADE-OFFS" : "04 / THE TRADE-OFFS";
     byId("scenario-label").textContent = data.mode === "custom"
       ? `24 hourly slots · ${data.workload_count} entered loads`
       : "24 hourly slots · 100 synthetic households";
@@ -384,6 +402,7 @@ byId("load-list").addEventListener("click", event => {
     byId("form-title").textContent = "Edit appliance";
     byId("save-load").textContent = "Save changes";
     byId("cancel-edit").hidden = false;
+    byId("advanced-settings").open = true;
     byId("editor-status").textContent = "Editing this load. Save or cancel before comparing.";
     setEditorButtons();
     byId("load-name").focus();
@@ -396,8 +415,13 @@ byId("load-list").addEventListener("click", event => {
   }
 });
 byId("example-loads").addEventListener("click", () => {
-  enteredLoads = [presets.ev, presets.laundry].map(load => ({...load, workload_id: `entered-${nextLoadId++}`}));
-  loadsChanged("Two example loads added. You can edit every setting.");
+  const examples = [
+    {...presets.ev, earliest_start: 8, preferred_start: 19, flexibility: 0.9},
+    {...presets.laundry, preferred_start: 18, flexibility: 0.9},
+    {...presets.water, preferred_start: 18, priority: "critical", flexibility: 0.4},
+  ];
+  enteredLoads = examples.map(load => ({...load, workload_id: `entered-${nextLoadId++}`}));
+  loadsChanged("Demo scenario loaded: a flexible EV, flexible laundry, and critical water heating request.");
 });
 resetForm();
 renderLoads();
