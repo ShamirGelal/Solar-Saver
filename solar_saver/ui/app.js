@@ -208,6 +208,41 @@ function renderCards() {
   });
 }
 
+function renderOutcome() {
+  const baseline = report.strategies.uncoordinated;
+  const solarOnly = report.strategies.solar_only;
+  const balanced = report.strategies.balanced;
+  const capacity = Math.min(...report.grid_capacity_kw);
+  const peakReduction = Math.max(0, baseline.metrics.peak_demand_kw - balanced.metrics.peak_demand_kw);
+  const gridReduction = Math.max(0, baseline.metrics.grid_energy_kwh - balanced.metrics.grid_energy_kwh);
+  const shiftMinutes = Math.round(balanced.metrics.average_preference_deviation_hours * 60);
+  const avoidedViolations = Math.max(0, baseline.metrics.capacity_violation_hours - balanced.metrics.capacity_violation_hours);
+  const solarShift = solarOnly.metrics.average_preference_deviation_hours;
+  const inconvenienceReduction = solarShift > 0
+    ? Math.max(0, Math.round((1 - balanced.metrics.average_preference_deviation_hours / solarShift) * 100))
+    : 0;
+  const requestLabel = report.mode === "custom" ? "loads" : "household requests";
+  byId("outcome-title").textContent = balanced.unscheduled_count === 0 && avoidedViolations > 0
+    ? `All ${report.workload_count} ${requestLabel} served—and ${avoidedViolations} overload hour${avoidedViolations === 1 ? "" : "s"} avoided.`
+    : balanced.unscheduled_count === 0 && balanced.metrics.capacity_violation_hours === 0
+      ? `All ${report.workload_count} ${requestLabel} served within the ${number(capacity, 0)} kW limit.`
+    : `${balanced.completed_count} of ${report.workload_count} ${requestLabel} served by the balanced policy.`;
+  const details = [`${number(capacity, 0)} kW feeder limit`];
+  if (peakReduction > 0) details.push(`${number(peakReduction)} kW lower peak than uncoordinated use`);
+  if (gridReduction > 0) details.push(`${number(gridReduction)} kWh less grid energy`);
+  if (report.mode === "custom" && report.critical_workload_count > 0) {
+    const assignments = new Map(balanced.assignments.map(item => [item.workload_id, item]));
+    const protectedCritical = report.workloads.filter(load => load.priority === "critical")
+      .every(load => assignments.get(load.workload_id)?.scheduled_start === load.preferred_start);
+    if (protectedCritical) details.push("critical load kept at its preferred time");
+  }
+  details.push(shiftMinutes >= 60
+    ? `${number(shiftMinutes / 60, shiftMinutes % 60 ? 1 : 0)} h average shift`
+    : `${shiftMinutes}-minute average shift`);
+  if (inconvenienceReduction > 0) details.push(`${inconvenienceReduction}% less shifting than solar-only`);
+  byId("outcome-detail").textContent = details.join(" · ");
+}
+
 function renderMetrics() {
   renderMetricTable("metrics-table", metricRows);
   renderMetricTable("metrics-extra-table", technicalMetricRows);
@@ -246,7 +281,8 @@ function svgElement(tag, attributes = {}, text = "") {
 function renderChart() {
   const item = report.strategies[selectedPolicy];
   const name = policies.find(policy => policy.key === selectedPolicy).name;
-  byId("chart-summary").textContent = `${name} policy · ${item.completed_count} of ${report.workload_count} household requests completed${item.unscheduled_count ? ` · ${item.unscheduled_count} could not be scheduled` : ""}`;
+  const requestLabel = report.mode === "custom" ? "loads" : "household requests";
+  byId("chart-summary").textContent = `${name} policy · ${item.completed_count} of ${report.workload_count} ${requestLabel} completed${item.unscheduled_count ? ` · ${item.unscheduled_count} could not be scheduled` : ""}`;
   const svg = svgElement("svg", {viewBox: "0 0 1080 350", role: "img", "aria-labelledby": "plot-title plot-description"});
   svg.append(svgElement("title", {id: "plot-title"}, `${name}: 24-hour solar supply and total demand`));
   svg.append(svgElement("desc", {id: "plot-description"}, "Hourly step chart. Gold shows expected solar supply; green shows total demand; the dashed line shows capacity. The hourly data table below provides exact values in kW."));
@@ -328,11 +364,14 @@ async function loadComparison(mode = comparisonMode) {
     byId("scenario-label").textContent = data.mode === "custom"
       ? `24 hourly slots · ${data.workload_count} entered loads`
       : "24 hourly slots · 100 synthetic households";
+    byId("solar-capacity").textContent = `${number(data.installed_capacity_kw, 0)} kW`;
+    byId("grid-capacity").textContent = `${number(Math.min(...data.grid_capacity_kw), 0)} kW`;
     byId("forecast-model").textContent = report.model_name;
     const metadata = report.forecast_metadata || {};
     byId("forecast-warning").textContent = [metadata.fallback_reason, metadata.warning].filter(Boolean).join(" ");
     byId("forecast-warning").hidden = !byId("forecast-warning").textContent;
     renderCards();
+    renderOutcome();
     renderMetrics();
     renderChart();
     byId("results").hidden = false;

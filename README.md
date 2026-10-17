@@ -113,9 +113,12 @@ The page offers two modes:
 
 “Compare my loads” runs the three existing scheduling policies on the entered
 loads plus the existing simulated district background. Entered loads replace the
-synthetic flexible population. Both modes use October 18, 2026, seed 42, 300 kW
-installed solar, 500 kW total-demand capacity, and default scheduler weights.
+synthetic flexible population. Both modes use October 18, 2026, seed 42, 500 kW
+of community solar, a 310 kW total-demand feeder limit, and default scheduler weights.
 These remain district-scale simulation settings, not a household service rating.
+The feeder limit is intentionally set just below the uncoordinated peak so the
+demo represents a constrained local grid; it is an explicit scenario assumption,
+not a measured Charlottesville feeder rating.
 Solar supply uses the same automatic trained-model selection and labeled fallback as the district demo. The selected model and forecast warnings appear above the results.
 
 Results include a selectable 24-hour power chart, accessible hourly data,

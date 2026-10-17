@@ -22,6 +22,9 @@ from .inputs import EnteredLoadDemandGenerator, parse_workloads
 
 
 DEMO_DATE = date(2026, 10, 18)
+DEMO_HOUSEHOLDS = 100
+DEMO_SOLAR_CAPACITY_KW = 500.0
+DEMO_GRID_CAPACITY_KW = 310.0
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
@@ -42,7 +45,7 @@ def serialize_report(report: SimulationReport, *, mode: str = "demo") -> dict:
             load.priority is Priority.CRITICAL for load in report.scenario.workloads
         ),
         "seed": 42,
-        "installed_capacity_kw": 300.0,
+        "installed_capacity_kw": DEMO_SOLAR_CAPACITY_KW,
         "requested_flexible_energy_kwh": sum(
             load.power_kw * load.duration_hours for load in report.scenario.workloads
         ),
@@ -76,9 +79,13 @@ def build_comparison(workloads: tuple[Workload, ...] | None = None, *, forecaste
     report = run_comparison(
         forecast_request=ForecastRequest(
             latitude=38.0293, longitude=-78.4767, target_date=DEMO_DATE,
-            installed_capacity_kw=300.0,
+            installed_capacity_kw=DEMO_SOLAR_CAPACITY_KW,
         ),
-        simulation_config=SimulationConfig(number_of_users=100, random_seed=42),
+        simulation_config=SimulationConfig(
+            number_of_users=DEMO_HOUSEHOLDS,
+            random_seed=42,
+            grid_capacity_kw=DEMO_GRID_CAPACITY_KW,
+        ),
         scheduler_weights=SchedulerWeights(),
         forecaster=forecaster,
         demand_generator=(SyntheticDemandGenerator() if workloads is None

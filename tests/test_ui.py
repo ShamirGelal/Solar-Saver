@@ -43,7 +43,7 @@ class DemoIntegrationTests(OfflineDemoTestCase):
         self.assertIn("One flexible request is modeled per household", page)
         self.assertIn("Demand is synthetic and uncalibrated", page)
         self.assertNotIn("synthetic users", page)
-        self.assertIn("household requests completed", client)
+        self.assertIn('"household requests"', client)
         self.assertIn("Household-request completion", client)
 
     def test_adapter_uses_pipeline_and_preserves_profiles_metrics_and_completion(self):
@@ -54,6 +54,8 @@ class DemoIntegrationTests(OfflineDemoTestCase):
         self.assertEqual(set(payload["strategies"]), {item.value for item in Strategy})
         self.assertEqual(payload["workload_count"], 100)
         self.assertEqual(payload["critical_workload_count"], 0)
+        self.assertEqual(payload["installed_capacity_kw"], 500.0)
+        self.assertEqual(set(payload["grid_capacity_kw"]), {310.0})
         self.assertEqual(payload["model_name"], "seasonal-demo-baseline")
         self.assertEqual(payload["forecast_metadata"], domain_report.solar_profile.metadata)
         self.assertEqual(payload["solar_supply_kw"], domain_report.solar_profile.supply_kw)

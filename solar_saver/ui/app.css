@@ -404,6 +404,30 @@ button:disabled {
   color:#98522a;
 }
 
+.outcome-banner {
+  margin-top:18px;
+  padding:20px 22px;
+  border-left:4px solid var(--green);
+  border-radius:8px;
+  background:#edf2e9;
+}
+
+.outcome-banner .eyebrow {
+  margin-bottom:7px;
+}
+
+.outcome-banner h3 {
+  margin:0;
+  font-size:20px;
+  letter-spacing:-.35px;
+}
+
+.outcome-banner > p:last-child {
+  margin:7px 0 0;
+  color:var(--muted);
+  font-size:12px;
+}
+
 .chart-panel {
   padding:27px 28px 20px;
   background:var(--white);

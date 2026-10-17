@@ -26,8 +26,8 @@
         <span class="eyebrow">THE SIMULATED DAY</span>
         <strong>October 18, 2026</strong>
         <p id="scenario-label">24 hourly slots · 100 synthetic households</p>
-        <div><span>Solar installed</span><b>300 kW</b></div>
-        <div><span>Total-demand capacity</span><b>500 kW</b></div>
+        <div><span>Community solar</span><b id="solar-capacity">500 kW</b></div>
+        <div><span>Feeder capacity</span><b id="grid-capacity">310 kW</b></div>
         <div><span>Reproducible scenario</span><b>Seed 42</b></div>
       </aside>
     </section>
@@ -80,6 +80,11 @@
     <div id="results" hidden>
       <div class="model-status"><span class="model-dot" aria-hidden="true"></span><div><strong>Solar forecast</strong><span id="forecast-model"></span><p id="forecast-warning" role="status" hidden></p></div></div>
       <div id="policy-cards" class="policy-cards" aria-label="Scheduling policy summaries"></div>
+      <section class="outcome-banner" aria-labelledby="outcome-title">
+        <p class="eyebrow">KEY OUTCOME</p>
+        <h3 id="outcome-title"></h3>
+        <p id="outcome-detail"></p>
+      </section>
       <section class="chart-panel" aria-labelledby="chart-title">
         <div class="chart-header"><div><p class="eyebrow">03 / THE DAILY PROFILE</p><h2 id="chart-title">Where demand meets daylight</h2><p id="chart-summary" class="muted"></p></div>
           <fieldset class="policy-picker"><legend class="sr-only">Policy displayed in chart</legend>

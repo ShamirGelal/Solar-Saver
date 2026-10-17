@@ -33,7 +33,7 @@ class RuntimeIntegrationTests(unittest.TestCase):
             model_name="trained-test-model", metadata={"weather_source": "test weather"},
         )
         self.loader.return_value.predict.return_value = self.profile
-        self.request = ForecastRequest(38.0293, -78.4767, date(2026, 10, 18), 300.0)
+        self.request = ForecastRequest(38.0293, -78.4767, date(2026, 10, 18), 500.0)
 
     def test_trained_selection_reaches_ui_and_all_three_policies(self):
         payload = build_comparison()
