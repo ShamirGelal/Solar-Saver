@@ -19,6 +19,9 @@ from solar_saver.forecasting.model import (
 DEFAULT_INPUT = Path(
     "data/processed/charlottesville_hourly_20200101_20241231.csv"
 )
+DEFAULT_WEATHER = Path(
+    "data/processed/charlottesville_weather_forecast_20220101_20241231.csv"
+)
 DEFAULT_METRICS = Path("outputs/solar_model_metrics.json")
 
 
@@ -27,11 +30,12 @@ def main() -> None:
         description="Train and evaluate the Solar Saver forecasting model."
     )
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
+    parser.add_argument("--weather", type=Path, default=DEFAULT_WEATHER)
     parser.add_argument("--artifact", type=Path, default=DEFAULT_ARTIFACT_PATH)
     parser.add_argument("--metrics", type=Path, default=DEFAULT_METRICS)
     args = parser.parse_args()
 
-    prepared = prepare_model_data(args.input)
+    prepared = prepare_model_data(args.input, args.weather)
     artifact = fit_solar_model(prepared)
     validation = evaluate_split(
         artifact, prepared.validation, split_name="validation"

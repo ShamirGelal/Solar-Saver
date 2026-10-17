@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Protocol, Sequence
 
 import joblib
 import numpy as np
@@ -24,11 +25,23 @@ from solar_saver.data.nasa_power import (
     CHARLOTTESVILLE_LONGITUDE,
     CHARLOTTESVILLE_TIMEZONE,
 )
+from solar_saver.data.open_meteo import OpenMeteoForecastClient
 from solar_saver.domain import ForecastRequest, SolarProfile
 
 
-ARTIFACT_SCHEMA_VERSION = "1"
+ARTIFACT_SCHEMA_VERSION = "2"
 DEFAULT_ARTIFACT_PATH = Path("artifacts/solar_forecaster.joblib")
+
+
+class WeatherForecastProvider(Protocol):
+    def hourly_forecast(
+        self,
+        *,
+        latitude: float,
+        longitude: float,
+        timestamps_utc: Sequence[pd.Timestamp],
+    ) -> pd.DataFrame:
+        """Return normalized weather features for every requested UTC hour."""
 
 
 @dataclass(frozen=True)
@@ -182,15 +195,26 @@ def load_model_artifact(
 class TrainedSolarForecaster:
     """Adapter from a fitted artifact to the shared SolarForecaster contract."""
 
-    def __init__(self, artifact: SolarModelArtifact) -> None:
+    def __init__(
+        self,
+        artifact: SolarModelArtifact,
+        *,
+        weather_provider: WeatherForecastProvider | None = None,
+    ) -> None:
         artifact.validate()
         self._artifact = artifact
+        self._weather_provider = weather_provider or OpenMeteoForecastClient()
 
     @classmethod
     def from_path(
-        cls, path: Path = DEFAULT_ARTIFACT_PATH
+        cls,
+        path: Path = DEFAULT_ARTIFACT_PATH,
+        *,
+        weather_provider: WeatherForecastProvider | None = None,
     ) -> "TrainedSolarForecaster":
-        return cls(load_model_artifact(path))
+        return cls(
+            load_model_artifact(path), weather_provider=weather_provider
+        )
 
     def predict(self, request: ForecastRequest) -> SolarProfile:
         if request.horizon_hours <= 0:
@@ -198,7 +222,9 @@ class TrainedSolarForecaster:
         if request.installed_capacity_kw <= 0:
             raise ValueError("installed_capacity_kw must be positive")
 
-        features = _build_request_features(self._artifact, request)
+        features = _build_request_features(
+            self._artifact, request, self._weather_provider
+        )
         irradiance = predict_irradiance(self._artifact, features)
         normalized_irradiance = (
             irradiance / self._artifact.reference_irradiance_wh_m2
@@ -214,10 +240,11 @@ class TrainedSolarForecaster:
 
         return SolarProfile(
             supply_kw=tuple(float(round(value, 3)) for value in supply_kw),
-            model_name="hist-gradient-boosting-expected-solar-v1",
+            model_name="weather-aware-hist-gradient-boosting-v2",
             metadata={
                 "artifact_schema": self._artifact.schema_version,
-                "forecast_type": "expected solar availability",
+                "forecast_type": "weather-aware solar availability",
+                "weather_source": "Open-Meteo forecast",
                 "irradiance_unit": "Wh/m^2",
                 "performance_ratio": self._artifact.performance_ratio,
                 "training_start_utc": self._artifact.training_start_utc,
@@ -227,7 +254,9 @@ class TrainedSolarForecaster:
 
 
 def _build_request_features(
-    artifact: SolarModelArtifact, request: ForecastRequest
+    artifact: SolarModelArtifact,
+    request: ForecastRequest,
+    weather_provider: WeatherForecastProvider,
 ) -> pd.DataFrame:
     local_start = pd.Timestamp(request.target_date).tz_localize(
         artifact.local_timezone
@@ -237,6 +266,17 @@ def _build_request_features(
     )
     future = pd.DataFrame(
         {"timestamp_utc": local_timestamps.tz_convert("UTC")}
+    )
+    weather = weather_provider.hourly_forecast(
+        latitude=request.latitude,
+        longitude=request.longitude,
+        timestamps_utc=list(future["timestamp_utc"]),
+    )
+    future = future.merge(
+        weather,
+        on="timestamp_utc",
+        how="left",
+        validate="one_to_one",
     )
     future = add_deterministic_features(
         future,

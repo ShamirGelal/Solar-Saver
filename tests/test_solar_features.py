@@ -17,6 +17,7 @@ from solar_saver.data.features import (
     load_clean_history,
     prepare_model_data,
 )
+from solar_saver.data.open_meteo import WEATHER_FEATURE_COLUMNS
 
 
 def write_complete_history(path: Path) -> None:
@@ -39,14 +40,34 @@ def write_complete_history(path: Path) -> None:
     frame.to_csv(path, index=False)
 
 
+def write_complete_weather(path: Path) -> None:
+    timestamps = pd.date_range(
+        "2022-01-01 00:00:00+00:00",
+        "2024-12-31 23:00:00+00:00",
+        freq="h",
+    )
+    frame = pd.DataFrame(
+        {
+            "timestamp_utc": timestamps,
+            "forecast_cloud_cover_percent": 40.0,
+            "forecast_temperature_c": 15.0,
+            "forecast_relative_humidity_percent": 60.0,
+            "forecast_precipitation_mm": 0.0,
+        }
+    )
+    frame.to_csv(path, index=False)
+
+
 class SolarFeatureTests(unittest.TestCase):
     def test_preprocessing_creates_finite_ordered_model_splits(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "history.csv"
+            weather_path = Path(directory) / "weather.csv"
             write_complete_history(path)
-            prepared = prepare_model_data(path)
+            write_complete_weather(weather_path)
+            prepared = prepare_model_data(path, weather_path)
 
-        self.assertEqual(len(prepared.training.target), 26_304)
+        self.assertEqual(len(prepared.training.target), 8_760)
         self.assertEqual(len(prepared.validation.target), 8_760)
         self.assertEqual(len(prepared.test.target), 8_784)
         self.assertLess(
@@ -69,6 +90,7 @@ class SolarFeatureTests(unittest.TestCase):
             "wind_speed_m_s",
         }
         self.assertTrue(weather_columns.isdisjoint(MODEL_FEATURE_COLUMNS))
+        self.assertTrue(set(WEATHER_FEATURE_COLUMNS).issubset(MODEL_FEATURE_COLUMNS))
 
     def test_solar_position_separates_day_and_night(self) -> None:
         frame = pd.DataFrame(
@@ -98,10 +120,12 @@ class SolarFeatureTests(unittest.TestCase):
     def test_combined_table_labels_each_partition(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "history.csv"
+            weather_path = Path(directory) / "weather.csv"
             write_complete_history(path)
-            combined = combine_model_splits(prepare_model_data(path))
+            write_complete_weather(weather_path)
+            combined = combine_model_splits(prepare_model_data(path, weather_path))
 
-        self.assertEqual(len(combined), 43_848)
+        self.assertEqual(len(combined), 26_304)
         self.assertEqual(
             set(combined["split"]), {"training", "validation", "test"}
         )

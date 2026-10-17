@@ -1,9 +1,8 @@
 """Feature preparation for the Solar Saver irradiance model.
 
-The model uses only information available for the requested timestamp. Weather
-observations remain in the source dataset for analysis, but are deliberately
-excluded from the first model because their future values are not available at
-prediction time.
+The model uses calendar and solar-position values known in advance together
+with forecast-style Open-Meteo weather fields. NASA's observed weather columns
+remain excluded so that hindsight measurements do not leak into evaluation.
 """
 
 from __future__ import annotations
@@ -15,6 +14,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from solar_saver.data.open_meteo import (
+    WEATHER_FEATURE_COLUMNS,
+    validate_weather_table,
+)
 from solar_saver.data.nasa_power import (
     CHARLOTTESVILLE_LATITUDE,
     CHARLOTTESVILLE_LONGITUDE,
@@ -35,6 +38,7 @@ MODEL_FEATURE_COLUMNS = (
     "solar_elevation_deg",
     "is_daylight",
     HISTORICAL_MEAN_COLUMN,
+    *WEATHER_FEATURE_COLUMNS,
 )
 
 _NUMERIC_SOURCE_COLUMNS = (
@@ -49,7 +53,7 @@ _NUMERIC_SOURCE_COLUMNS = (
 class ChronologicalSplitConfig:
     """Exclusive UTC boundaries for the three fixed model partitions."""
 
-    training_start: date = date(2020, 1, 1)
+    training_start: date = date(2022, 1, 1)
     validation_start: date = date(2023, 1, 1)
     test_start: date = date(2024, 1, 1)
     test_end_exclusive: date = date(2025, 1, 1)
@@ -201,6 +205,7 @@ def add_deterministic_features(
 
 def prepare_model_data(
     csv_path: Path,
+    weather_csv_path: Path,
     *,
     split_config: ChronologicalSplitConfig = ChronologicalSplitConfig(),
     latitude: float = CHARLOTTESVILLE_LATITUDE,
@@ -210,6 +215,8 @@ def prepare_model_data(
     """Build the exact feature matrices used by the gradient-boosting model."""
 
     history = load_clean_history(csv_path)
+    weather = validate_weather_table(pd.read_csv(weather_csv_path))
+    history = _join_weather(history, weather)
     featured = add_deterministic_features(
         history,
         latitude=latitude,
@@ -275,6 +282,23 @@ def _split_chronologically(
     ):
         raise ValueError("chronological partitions overlap")
     return training, validation, test
+
+
+def _join_weather(history: pd.DataFrame, weather: pd.DataFrame) -> pd.DataFrame:
+    joined = history.merge(
+        weather,
+        on="timestamp_utc",
+        how="inner",
+        validate="one_to_one",
+    )
+    if joined.empty:
+        raise ValueError("NASA and Open-Meteo data have no overlapping timestamps")
+    joined = joined.sort_values("timestamp_utc").reset_index(drop=True)
+    if len(joined) > 1:
+        elapsed = joined["timestamp_utc"].diff().dropna().dt.total_seconds()
+        if not elapsed.eq(3600.0).all():
+            raise ValueError("joined NASA and Open-Meteo data is not continuous")
+    return joined
 
 
 def _to_model_split(frame: pd.DataFrame) -> ModelSplit:

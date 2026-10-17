@@ -16,8 +16,11 @@ from solar_saver.data.features import (
 DEFAULT_INPUT = Path(
     "data/processed/charlottesville_hourly_20200101_20241231.csv"
 )
+DEFAULT_WEATHER = Path(
+    "data/processed/charlottesville_weather_forecast_20220101_20241231.csv"
+)
 DEFAULT_OUTPUT = Path(
-    "data/processed/charlottesville_model_input_20200101_20241231.csv"
+    "data/processed/charlottesville_weather_model_input_20220101_20241231.csv"
 )
 
 
@@ -26,10 +29,11 @@ def main() -> None:
         description="Prepare Solar Saver's chronological ML feature table."
     )
     parser.add_argument("--input", type=Path, default=DEFAULT_INPUT)
+    parser.add_argument("--weather", type=Path, default=DEFAULT_WEATHER)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     args = parser.parse_args()
 
-    prepared = prepare_model_data(args.input)
+    prepared = prepare_model_data(args.input, args.weather)
     model_table = combine_model_splits(prepared)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     model_table.to_csv(args.output, index=False)
