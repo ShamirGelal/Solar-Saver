@@ -14,8 +14,9 @@ It compares three policies:
 3. balanced scheduling using solar supply, grid capacity, priority, preference,
    and fairness penalties.
 
-The current forecaster is intentionally synthetic. It exists so every backend
-component can be developed and tested before the ML artifact is ready.
+The application uses the trained weather-aware forecaster when its local artifact
+is available. Missing artifacts or unavailable weather data trigger a clearly
+labeled synthetic seasonal fallback.
 
 ## Recommended team
 
@@ -54,12 +55,30 @@ This makes implementations replaceable without changing their consumers.
 From this directory:
 
 ```bash
+python3 -m pip install -r requirements.txt
 python3 -m unittest discover -s tests -v
 PYTHONPATH=. python3 scripts/run_demo.py
 ```
 
-The demo uses only the Python standard library. Install `requirements.txt` when
-the forecasting owner begins the data and scikit-learn implementation.
+Install the requirements in your Python environment before running either demo.
+On Windows, the local environment's interpreter is `.venv\Scripts\python.exe`;
+set `$env:PYTHONPATH='.'` in PowerShell before running scripts directly.
+
+To produce the trained artifact, follow
+[`solar_saver/forecasting/README.md`](solar_saver/forecasting/README.md).
+The runtime loads `artifacts/solar_forecaster.joblib` relative to the repository,
+and requests live Open-Meteo weather with a five-second connection/read timeout.
+Missing artifacts, weather request failures, and unusable weather responses
+select `SeasonalDemoForecaster`; its original synthetic warning is retained and
+a fallback reason is added. Invalid model artifacts and unrelated backend errors
+remain errors. The command-line demo prints the model and warnings to stderr,
+keeping its existing metrics JSON on stdout.
+
+For a deterministic offline run, set `SOLAR_SAVER_FORECAST_MODE=demo` (PowerShell:
+`$env:SOLAR_SAVER_FORECAST_MODE='demo'`). Set it to `auto` to restore automatic
+selection. This setting applies to the CLI, local UI server, and static exporter.
+Dependencies must still be installed for offline mode. Tests use controlled
+forecasters and weather responses; they do not require a local artifact or internet.
 
 ## Open the demo UI
 
@@ -71,19 +90,22 @@ python -m solar_saver.ui
 
 Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in a browser. Python 3.10+
 is required; use `python3` instead of `python` if that is your Python 3 command.
-No packages, build step, trained artifacts, or network access are needed. Stop
-the server with Ctrl+C. If port 8000 is busy, run
+Install `requirements.txt` first. Automatic trained prediction needs a local
+artifact and internet access; the seasonal fallback works offline. Stop the
+server with Ctrl+C. If port 8000 is busy, run
 `python -m solar_saver.ui --port 8001` and open that port instead. The server
 listens on your computer's loopback address and is intended for a local demo.
 
 The page compares all three policies, with a selectable 24-hour power chart,
 an accessible hourly data table, completion counts, and the full metrics table.
-“Reload comparison” repeats the same deterministic scenario: October 18, 2026,
+“Reload comparison” repeats the same workload scenario: October 18, 2026,
 100 synthetic users, seed 42, 300 kW installed solar, 500 kW total-demand
 capacity, and default scheduler weights. It is deliberately a fixed demo rather
 than an experiment editor. The demand is simulated Charlottesville demand,
-not observed utility data. Solar supply uses `SeasonalDemoForecaster`, an
-expected seasonal demo profile, not a trained ML model or live weather forecast.
+not observed utility data. The page displays the selected model and any fallback
+warning. In automatic mode solar predictions can change as weather forecasts
+update. This fixed demo date must be within the weather provider's supported
+date range for trained inference; otherwise the demo displays the fallback reason.
 
 The UI calls `run_comparison` and adapts its `SimulationReport` to a JSON response
 at `/comparison.json` (also available at `/api/comparison`); it does not read
@@ -117,6 +139,12 @@ Python pipeline at build time and exports the fixed comparison alongside the
 page. The hosted “Reload comparison” button reloads these precomputed results;
 the local Python server recomputes them. Chart selection and the hourly table
 work in both versions. This does not run Python or train a model in the browser.
+Export uses the same automatic model selection. GitHub's clean checkout has no
+trained artifact, so the current workflow publishes a labeled seasonal fallback.
+A local export with an artifact and available weather publishes trained results.
+To deploy trained results from CI, provision the artifact separately before the
+export step; never commit it to Git. Published results retain the model and
+warning from the time of export.
 
 To build and preview the same static site locally:
 

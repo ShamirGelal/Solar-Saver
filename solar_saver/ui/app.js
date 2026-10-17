@@ -154,6 +154,10 @@ async function loadComparison() {
     if (!response.ok) throw new Error([data.error, data.detail].filter(Boolean).join(" ") || "The comparison could not be completed.");
     validateReport(data);
     report = data;
+    byId("forecast-model").textContent = report.model_name;
+    const metadata = report.forecast_metadata || {};
+    byId("forecast-warning").textContent = [metadata.fallback_reason, metadata.warning].filter(Boolean).join(" ");
+    byId("forecast-warning").hidden = !byId("forecast-warning").textContent;
     renderCards();
     renderMetrics();
     renderChart();

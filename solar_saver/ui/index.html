@@ -13,7 +13,7 @@
   <a class="skip-link" href="#main">Skip to comparison</a>
   <header class="topbar wrap">
     <a href="./" class="brand" aria-label="Solar Saver home"><span class="sun-mark" aria-hidden="true">✳</span> Solar Saver</a>
-    <span class="demo-badge"><span aria-hidden="true">●</span> Offline simulation</span>
+    <span class="demo-badge"><span aria-hidden="true">●</span> District simulation</span>
   </header>
   <main id="main" class="wrap">
     <section class="intro" aria-labelledby="page-title">
@@ -31,12 +31,13 @@
         <div><span>Reproducible scenario</span><b>Seed 42</b></div>
       </aside>
     </section>
-    <div class="notice"><span aria-hidden="true">ⓘ</span><p><strong>A simulation, with clear limits.</strong> Demand is synthetic, not observed utility data. Expected solar supply comes from the seasonal demo baseline, not a trained model or live weather forecast. Scheduling shifts energy use; it does not inherently save total energy. Published results are precomputed for this fixed scenario.</p></div>
+    <div class="notice"><span aria-hidden="true">ⓘ</span><p><strong>A simulation, with clear limits.</strong> Demand is synthetic, not observed utility data. Scheduling shifts energy use; it does not inherently save total energy. Published results are precomputed for this fixed scenario. The solar model used is shown with the results.</p></div>
     <section class="section-head"><div><p class="eyebrow">01 / POLICY COMPARISON</p><h2>Same day. Three approaches.</h2></div><button id="reload" type="button">↻ Reload comparison</button></section>
     <p id="status" role="status" aria-live="polite">Loading the comparison…</p>
     <div id="error" class="error" role="alert" hidden></div>
     <noscript><p class="error">Enable JavaScript to load comparison results.</p></noscript>
     <div id="results" hidden>
+      <div class="notice"><span aria-hidden="true">ⓘ</span><div><p><strong>Solar forecast:</strong> <span id="forecast-model"></span></p><p id="forecast-warning" role="status" hidden></p></div></div>
       <div id="policy-cards" class="policy-cards" aria-label="Scheduling policy summaries"></div>
       <section class="chart-panel" aria-labelledby="chart-title">
         <div class="chart-header"><div><p class="eyebrow">02 / THE DAILY PROFILE</p><h2 id="chart-title">Where demand meets daylight</h2><p id="chart-summary" class="muted"></p></div>
