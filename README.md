@@ -1,5 +1,10 @@
 # Solar Saver
 
+> New teammate or new coding chat? Start with [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md),
+> then read your assignment under [`instructions/`](instructions/). Codex and
+> compatible coding agents should also read the root [`AGENTS.md`](AGENTS.md)
+> automatically when opened from this repository.
+
 Solar Saver is a backend-first prototype that predicts a 24-hour solar supply
 profile and coordinates synthetic Charlottesville workloads against that supply.
 It compares three policies:
