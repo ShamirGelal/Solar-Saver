@@ -1,4 +1,4 @@
-"""Run with python -m solar_saver.ui. No third-party dependencies required."""
+"""Run with python -m solar_saver.ui after installing requirements.txt."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from solar_saver.demand import SyntheticDemandGenerator
 from solar_saver.domain import (
     ForecastRequest, Priority, SchedulerWeights, SimulationConfig, SimulationReport,
 )
-from solar_saver.forecasting import SeasonalDemoForecaster
+from solar_saver.runtime import RuntimeForecaster
 from solar_saver.pipeline import run_comparison
 from solar_saver.scheduling import GreedyLoadScheduler
 
@@ -33,6 +33,7 @@ def serialize_report(report: SimulationReport) -> dict:
     return {
         "target_date": DEMO_DATE.isoformat(),
         "model_name": report.solar_profile.model_name,
+        "forecast_metadata": dict(report.solar_profile.metadata),
         "workload_count": len(report.scenario.workloads),
         "critical_workload_count": sum(
             load.priority is Priority.CRITICAL for load in report.scenario.workloads
@@ -68,7 +69,7 @@ def build_comparison() -> dict:
         ),
         simulation_config=SimulationConfig(number_of_users=100, random_seed=42),
         scheduler_weights=SchedulerWeights(),
-        forecaster=SeasonalDemoForecaster(),
+        forecaster=RuntimeForecaster(),
         demand_generator=SyntheticDemandGenerator(),
         scheduler=GreedyLoadScheduler(),
     )
