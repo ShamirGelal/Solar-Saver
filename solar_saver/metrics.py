@@ -1,4 +1,11 @@
-"""Strategy-independent schedule evaluation."""
+"""Strategy-independent evaluation of valid scheduler results.
+
+One-hour power slots sum to kWh. Renewable matching uses total served demand
+(background plus completed workloads) as its denominator. Preference deviations
+cover completed workloads only; completion metrics expose omitted work. Empty
+workload sets count as 100% complete, and zero demand has 0% renewable matching.
+Lower energy use with lower completion must not be reported as energy savings.
+"""
 
 from __future__ import annotations
 
