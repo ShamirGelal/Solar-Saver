@@ -16,7 +16,9 @@ from .__main__ import build_comparison
 
 def export_site(destination: Path) -> None:
     # Fail the build on backend errors, before publishing any incomplete page.
-    comparison = json.dumps(build_comparison(), allow_nan=False, indent=2) + "\n"
+    payload = build_comparison()
+    payload["supports_custom_loads"] = False
+    comparison = json.dumps(payload, allow_nan=False, indent=2) + "\n"
     destination.mkdir(parents=True, exist_ok=True)
     source = Path(__file__).parent
     for filename in ("index.html", "app.css", "app.js"):

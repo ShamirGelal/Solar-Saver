@@ -20,19 +20,55 @@
       <div>
         <p class="eyebrow">CHARLOTTESVILLE DISTRICT · DEMO LAB</p>
         <h1>A brighter balance.<br><span>One day at a time.</span></h1>
-        <p class="intro-copy">Move flexible electricity use toward the sun. Compare how three scheduling policies balance solar availability, local capacity, and household preferences.</p>
+        <p class="intro-copy">Your appliances. Your priorities. A little more sunshine. Plan flexible loads and compare how three policies balance solar availability, capacity, and the times that work for you.</p>
       </div>
       <aside class="day-card" aria-label="Demo scenario">
         <span class="eyebrow">THE SIMULATED DAY</span>
         <strong>October 18, 2026</strong>
-        <p>24 hourly slots · 100 synthetic households</p>
+        <p id="scenario-label">24 hourly slots · 100 synthetic households</p>
         <div><span>Solar installed</span><b>300 kW</b></div>
         <div><span>Total-demand capacity</span><b>500 kW</b></div>
         <div><span>Reproducible scenario</span><b>Seed 42</b></div>
       </aside>
     </section>
-    <div class="notice"><span aria-hidden="true">ⓘ</span><p><strong>A simulation, with clear limits.</strong> Demand is synthetic and uncalibrated, not observed utility data. One flexible request is modeled per household. Scheduling shifts energy use; it does not inherently save total energy. Published results are precomputed for this fixed scenario. The solar model used is shown with the results.</p></div>
-    <section class="section-head"><div><p class="eyebrow">01 / POLICY COMPARISON</p><h2>Same day. Three approaches.</h2></div><button id="reload" type="button">↻ Reload comparison</button></section>
+    <div class="notice"><span aria-hidden="true">ⓘ</span><p><strong>A simulation, with clear limits.</strong> Demand is synthetic and uncalibrated, not observed utility data. One flexible request is modeled per household in the district demo. Custom mode replaces those requests with your loads. The selected solar model and any fallback warning are shown with the results. Scheduling shifts energy use; it does not inherently save total energy.</p></div>
+
+    <section class="planner" aria-labelledby="planner-title">
+      <div class="section-head"><div><p class="eyebrow">01 / PLAN YOUR DAY</p><h2 id="planner-title">What needs to run?</h2></div><span class="step-note">Add loads, then compare their schedules.</span></div>
+      <p id="planner-availability" class="muted" role="status">Checking interactive scheduling…</p>
+      <div class="planner-grid">
+        <form id="load-form" class="load-form">
+          <fieldset id="load-fields">
+            <legend id="form-title">Add an appliance</legend>
+            <div class="form-grid">
+              <label class="field">Appliance preset<select id="load-preset" name="preset"><option value="ev">EV charging</option><option value="laundry">Laundry</option><option value="dishwasher">Dishwasher</option><option value="battery">Battery charging</option><option value="water">Water heating</option><option value="custom">Custom load</option></select></label>
+              <label class="field">Load name<input id="load-name" name="category" maxlength="64" required autocomplete="off" value="EV charging"></label>
+              <label class="field">Power (kW)<input id="load-power" name="power_kw" type="number" min="0" max="10000" step="any" value="7.2" required></label>
+              <label class="field">Duration (hours)<input id="load-duration" name="duration_hours" type="number" min="1" max="24" step="1" value="3" required></label>
+              <label class="field">Earliest start<select id="load-earliest" name="earliest_start" aria-describedby="window-help"></select></label>
+              <label class="field">Finish by<select id="load-latest" name="latest_finish" aria-describedby="window-help"></select></label>
+              <label class="field">Preferred start<select id="load-preferred" name="preferred_start"></select></label>
+              <label class="field">Priority<select id="load-priority" name="priority"><option value="flexible">Flexible</option><option value="important">Important</option><option value="critical">Critical</option></select></label>
+            </div>
+            <p id="window-help" class="field-help">Use whole-hour slots within this day. The entire duration must fit before your deadline. 24:00 is midnight at the end of the day.</p>
+            <label class="field flexibility-field" for="load-flexibility"><span>Willingness to shift <output id="flexibility-value" for="load-flexibility">70%</output></span><input id="load-flexibility" name="flexibility" type="range" min="0" max="1" step="0.1" value="0.7"><span class="range-labels"><span>Less willing</span><span>More willing</span></span></label>
+            <p class="field-help">Critical loads are considered first. Limited capacity can still leave a load unfinished.</p>
+            <p id="form-error" class="form-error" role="alert" hidden></p>
+            <div class="form-actions"><button id="save-load" class="primary-button" type="submit">+ Add load</button><button id="cancel-edit" type="button" hidden>Cancel edit</button><span id="load-energy" class="field-help">21.6 kWh requested</span></div>
+          </fieldset>
+        </form>
+        <div class="load-list-panel">
+          <div class="load-list-heading"><h3>My loads <span id="load-count" class="count-pill">0</span></h3><span id="total-load-energy" class="muted">0.0 kWh requested</span></div>
+          <div id="empty-loads" class="empty-loads"><span class="empty-sun" aria-hidden="true">✳</span><h3>A better schedule starts here.</h3><p>Add your first appliance, or try two example loads to explore the trade-offs.</p><button id="example-loads" type="button">Try example loads</button></div>
+          <ul id="load-list" class="load-list" aria-label="Entered appliance loads"></ul>
+          <div class="compare-actions"><button id="compare-loads" class="primary-button" type="button" disabled>Compare my loads <span aria-hidden="true">→</span></button><button id="view-demo" type="button">View district demo</button></div>
+          <p class="field-help">Your loads replace the demo’s flexible population; the same simulated district background, 300 kW solar, and 500 kW capacity remain. Entries stay in this tab until you refresh.</p>
+          <p id="editor-status" class="muted" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-head"><div><p class="eyebrow">02 / POLICY COMPARISON</p><h2>Same day. Three approaches.</h2><p id="comparison-context" class="muted">District demo · 100 synthetic workloads</p></div><button id="reload" type="button">↻ Reload comparison</button></section>
     <p id="status" role="status" aria-live="polite">Loading the comparison…</p>
     <div id="error" class="error" role="alert" hidden></div>
     <noscript><p class="error">Enable JavaScript to load comparison results.</p></noscript>
@@ -40,7 +76,7 @@
       <div class="notice"><span aria-hidden="true">ⓘ</span><div><p><strong>Solar forecast:</strong> <span id="forecast-model"></span></p><p id="forecast-warning" role="status" hidden></p></div></div>
       <div id="policy-cards" class="policy-cards" aria-label="Scheduling policy summaries"></div>
       <section class="chart-panel" aria-labelledby="chart-title">
-        <div class="chart-header"><div><p class="eyebrow">02 / THE DAILY PROFILE</p><h2 id="chart-title">Where demand meets daylight</h2><p id="chart-summary" class="muted"></p></div>
+        <div class="chart-header"><div><p class="eyebrow">03 / THE DAILY PROFILE</p><h2 id="chart-title">Where demand meets daylight</h2><p id="chart-summary" class="muted"></p></div>
           <fieldset class="policy-picker"><legend class="sr-only">Policy displayed in chart</legend>
             <label><input type="radio" name="policy" value="uncoordinated"><span>Uncoordinated</span></label>
             <label><input type="radio" name="policy" value="solar_only"><span>Solar-only</span></label>
@@ -52,8 +88,13 @@
         <p class="chart-note">Power in kW · Each step represents one hour · Total demand includes background demand and scheduled flexible household requests.</p>
         <details><summary>View the hourly data</summary><div class="table-scroll"><table id="hourly-table"><caption id="hourly-caption">Hourly profile in kW</caption><thead><tr><th scope="col">Hour</th><th scope="col">Solar supply</th><th scope="col">Total demand</th><th scope="col">Grid draw</th><th scope="col">Capacity</th></tr></thead><tbody></tbody></table></div></details>
       </section>
+      <section id="schedule-panel" class="schedule-panel" aria-labelledby="schedule-title" hidden>
+        <div class="section-head"><div><p class="eyebrow">04 / APPLIANCE TIMINGS</p><h2 id="schedule-title">Your day, scheduled.</h2><p id="schedule-summary" class="muted"></p></div></div>
+        <div class="table-scroll metrics-panel"><table id="schedule-table"><caption class="sr-only">Appliance timings for the selected policy</caption><thead><tr><th scope="col">Load</th><th scope="col">Priority</th><th scope="col">Preferred</th><th scope="col">Scheduled</th><th scope="col">Start shift</th><th scope="col">Requested energy</th></tr></thead><tbody></tbody></table></div>
+        <p class="footnote">Switch policy above to compare appliance timings. Unfinished loads are listed explicitly and contribute no flexible energy.</p>
+      </section>
       <section class="metrics-section" aria-labelledby="metrics-title">
-        <div class="section-head"><div><p class="eyebrow">03 / THE TRADE-OFFS</p><h2 id="metrics-title">See the whole picture</h2></div><p class="muted">Read energy and completion together.</p></div>
+        <div class="section-head"><div><p class="eyebrow">05 / THE TRADE-OFFS</p><h2 id="metrics-title">See the whole picture</h2></div><p class="muted">Read energy and completion together.</p></div>
         <div class="table-scroll metrics-panel"><table id="metrics-table"><caption class="sr-only">Comparison of scheduling metrics across the three policies</caption><thead><tr><th scope="col">Metric</th><th scope="col">Uncoordinated</th><th scope="col">Solar-only</th><th scope="col">Balanced</th></tr></thead><tbody></tbody></table></div>
         <p class="footnote">Renewable matching is solar energy used ÷ total served energy. Preference shifts cover completed household requests only. Lower grid energy with unfinished requests is not an energy saving. Critical completion is shown as “No critical requests” when none were generated.</p>
       </section>

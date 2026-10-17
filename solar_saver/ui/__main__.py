@@ -1,4 +1,4 @@
-"""Run with python -m solar_saver.ui after installing requirements.txt."""
+"""Local load planner. Run with python -m solar_saver.ui."""
 
 from __future__ import annotations
 
@@ -14,10 +14,11 @@ from urllib.parse import urlsplit
 from solar_saver.demand import SyntheticDemandGenerator
 from solar_saver.domain import (
     ForecastRequest, Priority, SchedulerWeights, SimulationConfig, SimulationReport,
+    Workload,
 )
-from solar_saver.runtime import RuntimeForecaster
 from solar_saver.pipeline import run_comparison
 from solar_saver.scheduling import GreedyLoadScheduler
+from .inputs import EnteredLoadDemandGenerator, parse_workloads
 
 
 DEMO_DATE = date(2026, 10, 18)
@@ -28,9 +29,11 @@ STATIC_FILES = {
 }
 
 
-def serialize_report(report: SimulationReport) -> dict:
+def serialize_report(report: SimulationReport, *, mode: str = "demo") -> dict:
     """Adapt domain objects for this UI, without changing shared contracts."""
     return {
+        "mode": mode,
+        "supports_custom_loads": True,
         "target_date": DEMO_DATE.isoformat(),
         "model_name": report.solar_profile.model_name,
         "forecast_metadata": dict(report.solar_profile.metadata),
@@ -46,6 +49,7 @@ def serialize_report(report: SimulationReport) -> dict:
         "solar_supply_kw": report.scenario.solar_supply_kw,
         "base_demand_kw": report.scenario.base_demand_kw,
         "grid_capacity_kw": report.scenario.grid_capacity_kw,
+        "workloads": [asdict(load) for load in report.scenario.workloads],
         "strategies": {
             strategy.value: {
                 "metrics": asdict(item.metrics),
@@ -55,13 +59,20 @@ def serialize_report(report: SimulationReport) -> dict:
                 "grid_draw_kw": item.result.grid_draw_kw,
                 "solar_used_kw": item.result.solar_used_kw,
                 "served_energy_kwh": sum(item.result.total_demand_kw),
+                "assignments": [asdict(assignment) for assignment in item.result.assignments],
+                "unscheduled_workload_ids": item.result.unscheduled_workload_ids,
             }
             for strategy, item in report.strategies.items()
         },
     }
 
 
-def build_comparison() -> dict:
+def build_comparison(workloads: tuple[Workload, ...] | None = None, *, forecaster=None) -> dict:
+    if forecaster is None:
+        # Keep the input editor/server importable before optional ML packages
+        # are installed. The forecasting package currently imports its model.
+        from solar_saver.runtime import RuntimeForecaster
+        forecaster = RuntimeForecaster()
     report = run_comparison(
         forecast_request=ForecastRequest(
             latitude=38.0293, longitude=-78.4767, target_date=DEMO_DATE,
@@ -69,14 +80,57 @@ def build_comparison() -> dict:
         ),
         simulation_config=SimulationConfig(number_of_users=100, random_seed=42),
         scheduler_weights=SchedulerWeights(),
-        forecaster=RuntimeForecaster(),
-        demand_generator=SyntheticDemandGenerator(),
+        forecaster=forecaster,
+        demand_generator=(SyntheticDemandGenerator() if workloads is None
+                          else EnteredLoadDemandGenerator(workloads)),
         scheduler=GreedyLoadScheduler(),
     )
-    return serialize_report(report)
+    return serialize_report(report, mode="demo" if workloads is None else "custom")
 
 
 class DemoHandler(BaseHTTPRequestHandler):
+    def do_POST(self) -> None:
+        if urlsplit(self.path).path != "/api/comparison":
+            self._json(HTTPStatus.NOT_FOUND, {"error": "Page not found."})
+            return
+        if self.headers.get_content_type() != "application/json":
+            self._json(HTTPStatus.UNSUPPORTED_MEDIA_TYPE, {"error": "Use application/json."})
+            return
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError:
+            length = 0
+        if length > 65_536:
+            self._json(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, {"error": "The load list is too large."})
+            return
+        if length <= 0:
+            self._json(HTTPStatus.BAD_REQUEST, {"error": "Provide a JSON request body."})
+            return
+        try:
+            payload = json.loads(self.rfile.read(length))
+        except (ValueError, UnicodeDecodeError):
+            self._json(HTTPStatus.BAD_REQUEST, {"error": "The request body must be valid JSON."})
+            return
+        try:
+            workloads = parse_workloads(payload)
+            self._json(HTTPStatus.OK, build_comparison(workloads))
+        except ModuleNotFoundError:
+            self._dependency_error()
+        except ValueError as error:
+            self._json(HTTPStatus.UNPROCESSABLE_ENTITY, {
+                "error": "Check your loads before comparing.", "detail": str(error),
+            })
+        except Exception:
+            self.log_error("Unexpected failure while comparing entered loads")
+            self._json(HTTPStatus.INTERNAL_SERVER_ERROR, {
+                "error": "The comparison is unavailable. Try again or check the local server.",
+            })
+
+    def _dependency_error(self) -> None:
+        self._json(HTTPStatus.SERVICE_UNAVAILABLE, {
+            "error": "The local app needs its Python dependencies. Install requirements.txt in the app's environment, then restart it.",
+        })
+
     def _send(self, status: int, content_type: str, body: bytes) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
@@ -101,6 +155,8 @@ class DemoHandler(BaseHTTPRequestHandler):
             try:
                 payload = build_comparison()
                 self._json(HTTPStatus.OK, payload)
+            except ModuleNotFoundError:
+                self._dependency_error()
             except ValueError as error:
                 self._json(HTTPStatus.UNPROCESSABLE_ENTITY, {
                     "error": "The comparison could not be completed.",
