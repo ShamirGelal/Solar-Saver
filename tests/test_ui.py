@@ -15,7 +15,7 @@ from urllib.error import HTTPError
 from urllib.request import urlopen
 from urllib.parse import urljoin
 
-from solar_saver.domain import SimulationConfig, Strategy
+from solar_saver.domain import SchedulerWeights, SimulationConfig, Strategy
 from solar_saver.pipeline import run_comparison
 from solar_saver.ui.__main__ import DemoHandler, build_comparison
 from solar_saver.ui.export import export_site
@@ -63,6 +63,10 @@ class DemoIntegrationTests(OfflineDemoTestCase):
         with patch("solar_saver.ui.__main__.run_comparison", wraps=run_comparison) as pipeline:
             payload = build_comparison()
         pipeline.assert_called_once()
+        self.assertEqual(
+            pipeline.call_args.kwargs["scheduler_weights"],
+            SchedulerWeights(grid_energy=0.01, preference=1.0, peak=2.0, fairness=0.5),
+        )
         domain_report = run_comparison(**pipeline.call_args.kwargs)
         self.assertEqual(set(payload["strategies"]), {item.value for item in Strategy})
         self.assertEqual(payload["population_count"], 40_000)

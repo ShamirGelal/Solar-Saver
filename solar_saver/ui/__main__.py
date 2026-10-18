@@ -27,6 +27,15 @@ DEMO_PEOPLE_PER_HOUSEHOLD = 2.5
 DEMO_HOUSEHOLDS = int(DEMO_POPULATION / DEMO_PEOPLE_PER_HOUSEHOLD)
 DEMO_SOLAR_CAPACITY_KW = 80_000.0
 DEMO_GRID_CAPACITY_KW = 80_000.0
+# The scheduler measures grid energy in kWh while its other score terms are
+# small ratios or hour deviations. This UI-specific weighting keeps all four
+# balanced-policy goals visible in the large aggregate demo.
+DEMO_SCHEDULER_WEIGHTS = SchedulerWeights(
+    grid_energy=0.01,
+    preference=1.0,
+    peak=2.0,
+    fairness=0.5,
+)
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
@@ -90,7 +99,7 @@ def build_comparison(workloads: tuple[Workload, ...] | None = None, *, forecaste
             random_seed=42,
             grid_capacity_kw=DEMO_GRID_CAPACITY_KW,
         ),
-        scheduler_weights=SchedulerWeights(),
+        scheduler_weights=DEMO_SCHEDULER_WEIGHTS,
         forecaster=forecaster,
         demand_generator=(SyntheticDemandGenerator() if workloads is None
                           else EnteredLoadDemandGenerator(workloads)),
