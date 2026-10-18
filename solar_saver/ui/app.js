@@ -31,6 +31,9 @@ let nextLoadId = 1;
 let customSupported = false;
 let loading = false;
 let comparisonMode = "demo";
+const maxEnteredLoads = 100;
+const demoLoadCount = 100;
+const demoGroupSize = 300;
 const timeLabel = hour => `${String(hour).padStart(2, "0")}:00`;
 const presets = {
   ev: {category: "EV charging", power_kw: 7.2, duration_hours: 3, earliest_start: 16, latest_finish: 24, preferred_start: 19, priority: "important", flexibility: 0.7},
@@ -356,7 +359,7 @@ async function loadComparison(mode = comparisonMode) {
     report = data;
     customSupported = data.supports_custom_loads === true;
     byId("planner-availability").textContent = customSupported
-      ? "Presets are editable simulation assumptions. Add up to 100 loads to plan this simulated day."
+      ? `Presets are editable simulation assumptions. Add up to ${maxEnteredLoads} loads to plan this simulated day.`
       : "This published demo shows precomputed results. You can prepare loads here; custom scheduling requires the local app.";
     byId("comparison-context").textContent = data.mode === "custom"
       ? `My ${data.workload_count} loads + simulated ${number(data.population_count, 0)}-person district background`
@@ -419,7 +422,7 @@ byId("cancel-edit").addEventListener("click", () => {
 byId("load-form").addEventListener("submit", event => {
   event.preventDefault();
   try {
-    if (!editingId && enteredLoads.length >= 100) throw new Error("You can compare up to 100 loads. Edit or remove an existing load first.");
+    if (!editingId && enteredLoads.length >= maxEnteredLoads) throw new Error(`You can compare up to ${maxEnteredLoads} loads. Edit or remove an existing load first.`);
     const load = {...readForm(), workload_id: editingId || `entered-${nextLoadId++}`};
     const editing = editingId !== null;
     if (editing) enteredLoads = enteredLoads.map(item => item.workload_id === editingId ? load : item);
@@ -456,13 +459,29 @@ byId("load-list").addEventListener("click", event => {
   }
 });
 byId("example-loads").addEventListener("click", () => {
-  const examples = [
-    {...presets.ev, earliest_start: 8, preferred_start: 19, priority: "flexible", flexibility: 1},
-    {...presets.laundry, preferred_start: 18, priority: "flexible", flexibility: 1},
-    {...presets.water, preferred_start: 18, priority: "flexible", flexibility: 1},
+  const demoPresets = [
+    ["EV charging group", presets.ev],
+    ["Laundry group", presets.laundry],
+    ["Dishwasher group", presets.dishwasher],
+    ["Battery charging group", presets.battery],
+    ["Water heating group", presets.water],
   ];
-  enteredLoads = examples.map(load => ({...load, workload_id: `entered-${nextLoadId++}`}));
-  loadsChanged("Demo scenario loaded: three flexible requests, each 100% willing to shift.");
+  enteredLoads = Array.from({length: demoLoadCount}, (_, index) => {
+    const [label, preset] = demoPresets[index % demoPresets.length];
+    const groupNumber = Math.floor(index / demoPresets.length) + 1;
+    const preferredStart = groupNumber % 2 ? 12 : 18;
+    return {
+      ...preset,
+      category: `${label} ${groupNumber}`,
+      power_kw: preset.power_kw * demoGroupSize,
+      earliest_start: Math.min(preset.earliest_start, 8),
+      preferred_start: preferredStart,
+      priority: "flexible",
+      flexibility: 1,
+      workload_id: `entered-${nextLoadId++}`,
+    };
+  });
+  loadsChanged("Demo scenario loaded: 100 flexible load groups representing 30,000 appliances, all 100% willing to shift and concentrated into noon and evening demand spikes.");
 });
 resetForm();
 renderLoads();

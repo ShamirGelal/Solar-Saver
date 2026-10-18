@@ -102,7 +102,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). If port 8000 is busy, add `
 The local page has two modes:
 
 - **District demo** runs all 16,000 synthetic household requests.
-- **My loads** lets you add, edit, and remove up to 100 appliance requests. Entered requests replace the district's generated flexible requests while the same synthetic background demand, solar capacity, and demand limit remain.
+- **My loads** lets you add, edit, and remove up to 100 appliance requests. Its ready-made scenario contains 100 synthetic load groups, each representing 300 similar appliances, for 30,000 appliances in total. Their preferred starts are concentrated at noon and 6 p.m. to create two large demand spikes. Every demo group is flexible and 100% willing to shift. Entered requests replace the district's generated flexible requests while the same synthetic background demand, solar capacity, and demand limit remain.
 
 Each appliance has a power requirement, whole-hour duration, availability window, preferred start, priority, and willingness to shift. Completed work always keeps its requested energy and must remain inside its allowed window.
 

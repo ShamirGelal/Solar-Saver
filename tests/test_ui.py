@@ -49,10 +49,15 @@ class DemoIntegrationTests(OfflineDemoTestCase):
 
         demo_loads = client.split(
             'byId("example-loads").addEventListener', 1
-        )[1].split("];", 1)[0]
-        self.assertEqual(demo_loads.count('priority: "flexible", flexibility: 1'), 3)
+        )[1]
+        self.assertIn("const demoLoadCount = 100;", client)
+        self.assertIn("const demoGroupSize = 300;", client)
+        self.assertIn('priority: "flexible"', demo_loads)
+        self.assertIn("flexibility: 1", demo_loads)
         self.assertNotIn('priority: "critical"', demo_loads)
-        self.assertIn("three flexible requests, each 100% willing to shift", client)
+        self.assertIn("100 flexible load groups representing 30,000 appliances", client)
+        self.assertIn("all 100% willing to shift", client)
+        self.assertIn("noon and evening demand spikes", client)
 
     def test_adapter_uses_pipeline_and_preserves_profiles_metrics_and_completion(self):
         with patch("solar_saver.ui.__main__.run_comparison", wraps=run_comparison) as pipeline:

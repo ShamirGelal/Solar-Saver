@@ -76,6 +76,8 @@ class EnteredLoadTests(unittest.TestCase):
             with self.subTest(payload=type(payload)), self.assertRaises(ValueError):
                 parse_workloads(payload)
         self.assertEqual(parse_workloads({"workloads": []}), ())
+        demo_rows = [entered_load(workload_id=f"demo-{index}") for index in range(100)]
+        self.assertEqual(len(parse_workloads({"workloads": demo_rows})), 100)
 
     def test_full_day_load_and_exact_deadline_are_supported(self):
         load, = parse_workloads({"workloads": [entered_load(
