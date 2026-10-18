@@ -55,7 +55,7 @@ class DemoIntegrationTests(OfflineDemoTestCase):
         self.assertEqual(payload["workload_count"], 100)
         self.assertEqual(payload["critical_workload_count"], 0)
         self.assertEqual(payload["installed_capacity_kw"], 500.0)
-        self.assertEqual(set(payload["grid_capacity_kw"]), {310.0})
+        self.assertEqual(set(payload["grid_capacity_kw"]), {500.0})
         self.assertEqual(payload["model_name"], "seasonal-demo-baseline")
         self.assertEqual(payload["forecast_metadata"], domain_report.solar_profile.metadata)
         self.assertEqual(payload["solar_supply_kw"], domain_report.solar_profile.supply_kw)

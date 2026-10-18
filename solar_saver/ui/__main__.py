@@ -24,7 +24,7 @@ from .inputs import EnteredLoadDemandGenerator, parse_workloads
 DEMO_DATE = date(2026, 10, 18)
 DEMO_HOUSEHOLDS = 100
 DEMO_SOLAR_CAPACITY_KW = 500.0
-DEMO_GRID_CAPACITY_KW = 310.0
+DEMO_GRID_CAPACITY_KW = 500.0
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
