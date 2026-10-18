@@ -1054,3 +1054,7 @@ footer p {
     margin-top:7px;
   }
 }
+
+.home-policy {padding: 1.25rem; border: 1px solid #c9d8d1; border-radius: 16px; background: #fff;}
+#home-flex {max-width: 34rem; margin-bottom: 1rem;}
+#home-results {margin-top: 1.5rem;}
