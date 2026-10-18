@@ -172,7 +172,7 @@ training features for an earlier prediction.
 Owner instructions: `instructions/02_demand_simulation.txt`
 
 The demand owner creates a reproducible simulated population. The current
-integrated demo represents 1,000 people as 400 households, with a 24-hour
+integrated demo represents 40,000 people as 16,000 households, with a 24-hour
 background-demand curve and one flexible workload per household.
 
 Initial workload categories include:
@@ -256,7 +256,7 @@ The MVP is intentionally limited to:
 - one simulated Charlottesville district;
 - one 24-hour period;
 - hourly time slots;
-- 1,000 synthetic people represented by 400 modeled households;
+- 40,000 synthetic people represented by 16,000 modeled households;
 - four or five flexible workload types;
 - one fixed background-demand profile;
 - one solar-supply prediction;

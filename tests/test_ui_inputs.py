@@ -120,23 +120,22 @@ class EnteredLoadTests(unittest.TestCase):
     def test_oversized_load_is_reported_unfinished_without_partial_energy(self):
         loads = parse_workloads({"workloads": [
             entered_load(
-                power_kw=1_000, duration_hours=3, earliest_start=0,
-                latest_finish=3, preferred_start=0, priority="critical",
-            ),
-            entered_load(
-                workload_id="second-large-load", power_kw=1_000,
+                workload_id=f"large-load-{index}", power_kw=10_000,
                 duration_hours=3, earliest_start=0, latest_finish=3,
                 preferred_start=0, priority="critical",
-            ),
+            )
+            for index in range(7)
         ]})
         payload = build_comparison(loads, forecaster=FixedForecaster())
         balanced = payload["strategies"]["balanced"]
         self.assertEqual(balanced["unscheduled_count"], 1)
-        self.assertEqual(len(balanced["assignments"]), 1)
-        self.assertEqual(balanced["metrics"]["critical_completion_percent"], 50)
+        self.assertEqual(len(balanced["assignments"]), 6)
+        self.assertAlmostEqual(
+            balanced["metrics"]["critical_completion_percent"], 600 / 7,
+        )
         self.assertAlmostEqual(
             balanced["served_energy_kwh"] - sum(payload["base_demand_kw"]),
-            3_000,
+            180_000,
         )
         self.assertGreater(payload["strategies"]["uncoordinated"]["metrics"]["capacity_violation_hours"], 0)
 
@@ -154,9 +153,9 @@ class EnteredLoadTests(unittest.TestCase):
         second = build_comparison(forecaster=FixedForecaster())
         self.assertEqual(first, second)
         self.assertEqual(first["mode"], "demo")
-        self.assertEqual(first["population_count"], 1_000)
-        self.assertEqual(first["household_count"], 400)
-        self.assertEqual(first["workload_count"], 400)
+        self.assertEqual(first["population_count"], 40_000)
+        self.assertEqual(first["household_count"], 16_000)
+        self.assertEqual(first["workload_count"], 16_000)
 
     def test_static_export_does_not_advertise_live_computation(self):
         payload = build_comparison(forecaster=FixedForecaster())
@@ -167,7 +166,7 @@ class EnteredLoadTests(unittest.TestCase):
             actual = json.loads((destination / "comparison.json").read_text())
             self.assertFalse(actual["supports_custom_loads"])
             self.assertEqual(actual["mode"], "demo")
-            self.assertEqual(actual["workload_count"], 400)
+            self.assertEqual(actual["workload_count"], 16_000)
             self.assertTrue((destination / "app.js").is_file())
 
 

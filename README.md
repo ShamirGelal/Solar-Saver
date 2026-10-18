@@ -23,10 +23,10 @@ Solar Saver runs one reproducible 24-hour simulation:
 
 The current district demo models:
 
-- **1,000 synthetic people**, represented by **400 households**;
+- **40,000 synthetic people**, represented by **16,000 households**;
 - **one flexible request per household**;
-- **2,000 kW of community solar capacity**;
-- a **2,000 kW total-demand capacity limit**;
+- **80,000 kW of community solar capacity**;
+- an **80,000 kW total-demand capacity limit**;
 - 24 one-hour slots on October 18, 2026; and
 - seed 42, so identical inputs produce identical scenarios.
 
@@ -68,7 +68,7 @@ All subsystems communicate through the domain objects in [`solar_saver/domain.py
 
 | Capability | GitHub Pages | Local Python application |
 | --- | :---: | :---: |
-| View the 1,000-person district comparison | Yes | Yes |
+| View the 40,000-person district comparison | Yes | Yes |
 | Switch charts between the three policies | Yes | Yes |
 | Inspect hourly values and metrics | Yes | Yes |
 | Add or edit appliance loads | Prepare only | Yes |
@@ -101,7 +101,7 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). If port 8000 is busy, add `
 
 The local page has two modes:
 
-- **District demo** runs all 400 synthetic household requests.
+- **District demo** runs all 16,000 synthetic household requests.
 - **My loads** lets you add, edit, and remove up to 100 appliance requests. Entered requests replace the district's generated flexible requests while the same synthetic background demand, solar capacity, and demand limit remain.
 
 Each appliance has a power requirement, whole-hour duration, availability window, preferred start, priority, and willingness to shift. Completed work always keeps its requested energy and must remain inside its allowed window.

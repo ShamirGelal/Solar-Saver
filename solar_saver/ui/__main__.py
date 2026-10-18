@@ -22,11 +22,11 @@ from .inputs import EnteredLoadDemandGenerator, parse_workloads
 
 
 DEMO_DATE = date(2026, 10, 18)
-DEMO_POPULATION = 1_000
+DEMO_POPULATION = 40_000
 DEMO_PEOPLE_PER_HOUSEHOLD = 2.5
 DEMO_HOUSEHOLDS = int(DEMO_POPULATION / DEMO_PEOPLE_PER_HOUSEHOLD)
-DEMO_SOLAR_CAPACITY_KW = 2_000.0
-DEMO_GRID_CAPACITY_KW = 2_000.0
+DEMO_SOLAR_CAPACITY_KW = 80_000.0
+DEMO_GRID_CAPACITY_KW = 80_000.0
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
