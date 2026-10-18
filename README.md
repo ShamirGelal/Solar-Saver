@@ -16,29 +16,33 @@ The central question is simple: **How can a community move flexible electricity 
 Solar Saver runs one reproducible 24-hour simulation:
 
 1. A solar forecaster produces one expected supply value for each hour.
-2. A deterministic demand generator creates background demand and flexible household requests.
+2. A deterministic demand generator creates the district background, and the presentation fixture adds a reproducible evening surge of flexible appliance groups.
 3. Three scheduling policies receive the exact same scenario.
 4. The application measures solar matching, grid energy, peak demand, completion, capacity violations, preference shifts, and unfinished work.
 5. The UI displays the policies side by side and plots their hourly demand.
 
-The current district demo models:
+The current presentation demo models:
 
-- **10,000 synthetic people**, represented by **4,000 households**;
-- **one flexible request per household**;
-- **20,000 kW of community solar capacity**;
-- a **20,000 kW total-demand capacity limit**;
+- **40,000 synthetic people**, represented by **16,000 households**;
+- **100 aggregate load groups**, representing **20,000 flexible appliance events** across those households;
+- an intentionally stressed **6 p.m. preferred start** for every group;
+- appliance groups that are **100% flexible** so the policies have room to demonstrate their trade-offs;
+- **80 MW of community solar capacity**;
+- an **80 MW total-demand capacity limit**;
 - 24 one-hour slots on October 18, 2026; and
 - seed 42, so identical inputs produce identical scenarios.
 
-These are explicit demonstration assumptions. The demand profile, population conversion, solar capacity, and grid limit are not observed Charlottesville utility data.
+Some simulated households therefore contribute more than one appliance event. These are explicit demonstration assumptions. The demand profile, population conversion, appliance mix, solar capacity, and grid limit are synthetic and uncalibrated; they are not observed Charlottesville utility data.
+
+The deliberate evening surge makes the policies easy to compare in a live demonstration. With the deterministic seasonal fallback, Uncoordinated preserves 6 p.m. preferences but exceeds the demand limit; Solar-only produces the highest solar match but shifts work by about five hours on average; Balanced avoids the overload, produces the lowest peak, and keeps average shifting near one hour. Every policy completes the same work and serves the same total energy.
 
 ## The three scheduling policies
 
 | Policy | How it schedules work | Trade-off it demonstrates |
 | --- | --- | --- |
-| **Uncoordinated** | Starts each request as close as possible to its preferred time. | Protects convenience, but does not coordinate the community. |
-| **Solar-only** | Moves requests toward the strongest available solar supply while respecting windows and capacity. | Uses more solar, but may shift people farther from preferred times. |
-| **Balanced** | Scores solar use, capacity, priority, preference, peak demand, and fairness together. | Seeks a practical compromise across all goals. |
+| **Uncoordinated** | Starts every group at its preferred 6 p.m. time. | Protects convenience, but creates an evening overload. |
+| **Solar-only** | Moves groups aggressively toward the strongest solar supply while respecting windows and capacity. | Achieves the best solar match, but shifts work much farther from 6 p.m. |
+| **Balanced** | Scores solar use, capacity, priority, preference, peak demand, and fairness together. | Avoids the overload and lowers the peak while retaining useful solar gains with less shifting. |
 
 Critical workload protection is an explicit scheduling rule. The ML model only predicts solar availability; it never decides which person deserves electricity.
 
@@ -68,7 +72,7 @@ All subsystems communicate through the domain objects in [`solar_saver/domain.py
 
 | Capability | GitHub Pages | Local Python application |
 | --- | :---: | :---: |
-| View the 10,000-person district comparison | Yes | Yes |
+| View the 40,000-person evening-surge comparison | Yes | Yes |
 | Switch charts between the three policies | Yes | Yes |
 | Inspect hourly values and metrics | Yes | Yes |
 | Add or edit appliance loads | Prepare only | Yes |
@@ -101,8 +105,10 @@ Open [http://127.0.0.1:8000](http://127.0.0.1:8000). If port 8000 is busy, add `
 
 The local page has two modes:
 
-- **District demo** runs all 4,000 synthetic household requests.
-- **My loads** lets you add, edit, and remove up to 100 appliance requests. Entered requests replace the district's generated flexible requests while the same synthetic background demand, solar capacity, and demand limit remain.
+- **Evening surge showcase** opens automatically with 100 aggregate groups representing 20,000 flexible appliance events. All prefer 6 p.m.; choose each policy to see the demand curve and trade-offs change.
+- **My loads** lets you add, edit, and remove up to 100 appliance requests. **Load showcase into editor** copies the exact default groups from the backend, so you can modify the presentation scenario rather than recreating it in the browser. Entered requests replace the showcase groups while the same synthetic district background, solar profile, and demand limit remain.
+
+The app labels household-scale loads and aggregate groups separately. Aggregate showcase groups retain the presentation weights when copied into the editor; ordinary household-scale entries use the shared scheduler defaults.
 
 Each appliance has a power requirement, whole-hour duration, availability window, preferred start, priority, and willingness to shift. Completed work always keeps its requested energy and must remain inside its allowed window.
 
@@ -160,7 +166,8 @@ Developers and coding agents should read [`AGENTS.md`](AGENTS.md), [`PROJECT_CON
 
 ## Current limitations
 
-- Demand and appliance ownership are synthetic and have not been calibrated against utility or household datasets.
+- Demand, appliance ownership, group size, and presentation weights are synthetic and have not been calibrated against utility or household datasets.
+- The default 6 p.m. surge is deliberately constructed to expose scheduling trade-offs; it is not a measured Charlottesville load event.
 - The demo represents one district, one day, and hourly time slots.
 - The scheduler is deterministic and greedy; it is not a globally optimal power-system dispatch model.
 - Fairness is evaluated within one simulated day, not across repeated days.

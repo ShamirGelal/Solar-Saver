@@ -171,9 +171,13 @@ training features for an earlier prediction.
 
 Owner instructions: `instructions/02_demand_simulation.txt`
 
-The demand owner creates a reproducible simulated population. The current
-integrated demo represents 10,000 people as 4,000 households, with a 24-hour
-background-demand curve and one flexible workload per household.
+The demand owner creates a reproducible simulated population. The underlying
+district generator represents 40,000 people as 16,000 households, with a
+24-hour background-demand curve and one flexible workload per household. The
+presentation UI keeps that background but replaces the generated flexible work
+with 100 deterministic aggregate groups representing 20,000 appliance events.
+Those groups all prefer 18:00 so the policy trade-offs are visible; this is an
+explicit synthetic, uncalibrated demonstration assumption.
 
 Initial workload categories include:
 
@@ -256,7 +260,7 @@ The MVP is intentionally limited to:
 - one simulated Charlottesville district;
 - one 24-hour period;
 - hourly time slots;
-- 10,000 synthetic people represented by 4,000 modeled households;
+- 40,000 synthetic people represented by 16,000 modeled households;
 - four or five flexible workload types;
 - one fixed background-demand profile;
 - one solar-supply prediction;
@@ -277,28 +281,22 @@ Non-goals for the hackathon MVP:
 
 ## Current repository state
 
-The initial scaffold includes:
+The integrated prototype now includes:
 
 - stable domain types and protocols;
-- a deterministic synthetic solar fallback;
-- a deterministic synthetic workload generator;
-- uncoordinated, solar-only, and balanced reference schedulers;
-- strategy-independent metrics;
-- an end-to-end comparison pipeline;
-- an offline demo script; and
-- contract smoke tests.
+- NASA POWER preparation, feature engineering, model training, and evaluation;
+- runtime trained-forecast selection with a deterministic seasonal fallback;
+- deterministic synthetic background demand and household workloads;
+- uncoordinated, solar-only, and balanced schedulers with comparison metrics;
+- a local interactive UI and a precomputed GitHub Pages export;
+- a presentation fixture whose three policy curves have distinct trade-offs;
+- command-line and browser demos; and
+- unit, integration, HTTP, runtime, scheduling, and export tests.
 
-The following work remains intentionally incomplete:
-
-- NASA POWER ingestion;
-- feature engineering;
-- trained forecasting model and artifact;
-- comprehensive subsystem tests;
-- validated workload assumptions;
-- scheduler refinement and fairness evaluation;
-- persistent experiment outputs;
-- UI, visualization, and deployment; and
-- final demo narrative and video.
+Work still needed after the hackathon prototype includes calibrated demand and
+appliance assumptions, broader forecasting validation, objective normalization
+for scheduler scores, multi-day fairness evaluation, a hosted API for public
+custom comparisons, and production utility or device integration.
 
 ## Team workflow
 
