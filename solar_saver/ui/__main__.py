@@ -17,7 +17,6 @@ from solar_saver.domain import (
 )
 from solar_saver.pipeline import run_comparison
 from solar_saver.scheduling import GreedyLoadScheduler
-from .household import household_examples
 from .inputs import EnteredLoadDemandGenerator, parse_workloads
 from .scenarios import (
     SHOWCASE_APPLIANCES_PER_GROUP,
@@ -60,7 +59,6 @@ def serialize_report(
     """Adapt domain objects for this UI, without changing shared contracts."""
     is_showcase = mode == "showcase"
     return {
-        "household_demo": household_examples(),
         "mode": mode,
         "workload_scale": workload_scale,
         "scenario_name": (

@@ -573,33 +573,3 @@ byId("example-loads").addEventListener("click", () => {
 resetForm();
 renderLoads();
 loadComparison();
-
-function renderHouseholdExample() {
-  const samples = report && report.household_demo;
-  const panel = byId("home-results");
-  if (!samples) { panel.textContent = "Household examples are unavailable. Refresh after the latest deployment."; return; }
-  const selected = samples[byId("home-flex").value];
-  const clock = hour => `${String(hour).padStart(2, "0")}:00`;
-  const headings = {uncoordinated:"Uncoordinated", solar_only:"Solar-only", balanced:"Balanced"};
-  panel.replaceChildren();
-  const summary = document.createElement("p");
-  summary.textContent = "Same 14.0 kWh of appliance work in every comparison. Read solar matching alongside time shifts.";
-  panel.append(summary);
-  const grid = document.createElement("div"); grid.className = "policy-cards";
-  Object.entries(selected).forEach(([policy, result]) => {
-    const card = document.createElement("article"); card.className = "home-policy";
-    const title = document.createElement("h3"); title.textContent = headings[policy]; card.append(title);
-    const metrics = result.metrics;
-    const text = document.createElement("p"); text.textContent = `${metrics.renewable_match_percent.toFixed(1)}% solar matching · ${metrics.grid_energy_kwh.toFixed(1)} kWh grid energy · ${metrics.average_preference_deviation_hours.toFixed(1)} h average shift · ${metrics.capacity_violation_hours} overload hours`;
-    card.append(text);
-    result.assignments.forEach(a => {
-      const row = document.createElement("p"); row.textContent = `${a.workload_id}: preferred 18:00 → ${clock(a.scheduled_start)}–${clock(a.scheduled_end)}`; card.append(row);
-    });
-    grid.append(card);
-  });
-  panel.append(grid);
-}
-byId("home-compare").addEventListener("click", renderHouseholdExample);
-byId("home-flex").addEventListener("change", () => {
-  byId("home-results").textContent = "Flexibility changed. Select Compare household schedules to update the results.";
-});
