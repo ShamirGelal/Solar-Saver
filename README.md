@@ -108,17 +108,18 @@ The page offers two modes:
   including at the preferred start; 24:00 means the end of the day. Presets are
   simulation assumptions, not measured appliance data. Entries live in the tab
   and are cleared by a page refresh.
-- **District demo:** the original deterministic 100-household synthetic scenario.
+- **District demo:** a deterministic 10,000-person synthetic scenario, represented
+  by 4,000 modeled households at 2.5 people per household and one flexible
+  request per household.
   “View district demo” restores this comparison without clearing entered loads.
 
 “Compare my loads” runs the three existing scheduling policies on the entered
 loads plus the existing simulated district background. Entered loads replace the
-synthetic flexible population. Both modes use October 18, 2026, seed 42, 500 kW
-of community solar, a 310 kW total-demand feeder limit, and default scheduler weights.
-These remain district-scale simulation settings, not a household service rating.
-The feeder limit is intentionally set just below the uncoordinated peak so the
-demo represents a constrained local grid; it is an explicit scenario assumption,
-not a measured Charlottesville feeder rating.
+synthetic flexible population. Both modes use October 18, 2026, seed 42, 20,000 kW
+of community solar, a 20,000 kW total-demand capacity limit, and default scheduler
+weights. These are scaled district simulation settings. The population conversion,
+solar capacity, and demand limit are explicit assumptions, not measured
+Charlottesville demographic or utility values.
 Solar supply uses the same automatic trained-model selection and labeled fallback as the district demo. The selected model and forecast warnings appear above the results.
 
 Results include a selectable 24-hour power chart, accessible hourly data,

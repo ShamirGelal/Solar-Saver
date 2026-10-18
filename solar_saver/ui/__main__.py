@@ -22,9 +22,11 @@ from .inputs import EnteredLoadDemandGenerator, parse_workloads
 
 
 DEMO_DATE = date(2026, 10, 18)
-DEMO_HOUSEHOLDS = 100
-DEMO_SOLAR_CAPACITY_KW = 500.0
-DEMO_GRID_CAPACITY_KW = 310.0
+DEMO_POPULATION = 10_000
+DEMO_PEOPLE_PER_HOUSEHOLD = 2.5
+DEMO_HOUSEHOLDS = int(DEMO_POPULATION / DEMO_PEOPLE_PER_HOUSEHOLD)
+DEMO_SOLAR_CAPACITY_KW = 20_000.0
+DEMO_GRID_CAPACITY_KW = 20_000.0
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
@@ -44,6 +46,8 @@ def serialize_report(report: SimulationReport, *, mode: str = "demo") -> dict:
         "critical_workload_count": sum(
             load.priority is Priority.CRITICAL for load in report.scenario.workloads
         ),
+        "population_count": DEMO_POPULATION,
+        "household_count": DEMO_HOUSEHOLDS,
         "seed": 42,
         "installed_capacity_kw": DEMO_SOLAR_CAPACITY_KW,
         "requested_flexible_energy_kwh": sum(
