@@ -16,7 +16,7 @@ from scripts.run_demo import main
 from solar_saver.domain import ForecastRequest, SolarProfile
 from solar_saver.forecasting import SeasonalDemoForecaster
 from solar_saver.runtime import RuntimeForecaster
-from solar_saver.ui.__main__ import build_comparison
+from solar_saver.ui.__main__ import DEMO_SOLAR_CAPACITY_KW, build_comparison
 from solar_saver.ui.export import export_site
 
 
@@ -33,7 +33,7 @@ class RuntimeIntegrationTests(unittest.TestCase):
             model_name="trained-test-model", metadata={"weather_source": "test weather"},
         )
         self.loader.return_value.predict.return_value = self.profile
-        self.request = ForecastRequest(38.0293, -78.4767, date(2026, 10, 18), 500.0)
+        self.request = ForecastRequest(38.0293, -78.4767, date(2026, 10, 18), DEMO_SOLAR_CAPACITY_KW)
 
     def test_trained_selection_reaches_ui_and_all_three_policies(self):
         payload = build_comparison()

@@ -172,7 +172,8 @@ function validateReport(data) {
   const profile = values => Array.isArray(values) && values.length === 24 && values.every(value => Number.isFinite(value) && value >= 0);
   const count = value => Number.isInteger(value) && value >= 0;
   if (![data.solar_supply_kw, data.base_demand_kw, data.grid_capacity_kw].every(profile)
-      || !count(data.workload_count) || !count(data.critical_workload_count)) {
+      || !count(data.workload_count) || !count(data.critical_workload_count)
+      || !count(data.population_count) || !count(data.household_count)) {
     throw new Error("The backend returned an invalid 24-hour scenario.");
   }
   for (const policy of policies) {
@@ -227,7 +228,7 @@ function renderOutcome() {
     : balanced.unscheduled_count === 0 && balanced.metrics.capacity_violation_hours === 0
       ? `All ${report.workload_count} ${requestLabel} served within the ${number(capacity, 0)} kW limit.`
     : `${balanced.completed_count} of ${report.workload_count} ${requestLabel} served by the balanced policy.`;
-  const details = [`${number(capacity, 0)} kW feeder limit`];
+  const details = [`${number(capacity, 0)} kW total-demand capacity`];
   if (peakReduction > 0) details.push(`${number(peakReduction)} kW lower peak than uncoordinated use`);
   if (gridReduction > 0) details.push(`${number(gridReduction)} kWh less grid energy`);
   if (report.mode === "custom" && report.critical_workload_count > 0) {
@@ -289,9 +290,10 @@ function renderChart() {
   const left = 53, right = 1060, top = 32, bottom = 306;
   const maximum = Math.max(100, ...report.solar_supply_kw, ...report.grid_capacity_kw, ...item.total_demand_kw);
   const ceiling = Math.ceil(maximum / 100) * 100 + 100;
+  const tickSize = ceiling <= 1000 ? 100 : Math.ceil(ceiling / 5000) * 1000;
   const x = hour => left + hour / 24 * (right - left);
   const y = value => bottom - value / ceiling * (bottom - top);
-  for (let value = 0; value <= ceiling; value += 100) {
+  for (let value = 0; value <= ceiling; value += tickSize) {
     svg.append(svgElement("line", {x1: left, x2: right, y1: y(value), y2: y(value), stroke: "#e5e9df", "stroke-width": 1}));
     svg.append(svgElement("text", {x: left - 12, y: y(value) + 4, "text-anchor": "end", fill: "#65755f", "font-size": 12}, String(value)));
   }
@@ -357,13 +359,13 @@ async function loadComparison(mode = comparisonMode) {
       ? "Presets are editable simulation assumptions. Add up to 100 loads to plan this simulated day."
       : "This published demo shows precomputed results. You can prepare loads here; custom scheduling requires the local app.";
     byId("comparison-context").textContent = data.mode === "custom"
-      ? `My ${data.workload_count} loads + simulated district background`
-      : "District demo · 100 synthetic household requests";
+      ? `My ${data.workload_count} loads + simulated ${number(data.population_count, 0)}-person district background`
+      : `District demo · ${number(data.workload_count, 0)} synthetic household requests`;
     byId("metrics-step").textContent = data.mode === "custom"
       ? "05 / THE TRADE-OFFS" : "04 / THE TRADE-OFFS";
     byId("scenario-label").textContent = data.mode === "custom"
-      ? `24 hourly slots · ${data.workload_count} entered loads`
-      : "24 hourly slots · 100 synthetic households";
+      ? `24 hourly slots · ${number(data.population_count, 0)}-person district · ${data.workload_count} entered loads`
+      : `24 hourly slots · ${number(data.population_count, 0)} synthetic people · ${number(data.household_count, 0)} modeled households`;
     byId("solar-capacity").textContent = `${number(data.installed_capacity_kw, 0)} kW`;
     byId("grid-capacity").textContent = `${number(Math.min(...data.grid_capacity_kw), 0)} kW`;
     byId("forecast-model").textContent = report.model_name;
