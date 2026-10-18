@@ -455,12 +455,12 @@ byId("load-list").addEventListener("click", event => {
 });
 byId("example-loads").addEventListener("click", () => {
   const examples = [
-    {...presets.ev, earliest_start: 8, preferred_start: 19, flexibility: 0.9},
-    {...presets.laundry, preferred_start: 18, flexibility: 0.9},
-    {...presets.water, preferred_start: 18, priority: "critical", flexibility: 0.4},
+    {...presets.ev, earliest_start: 8, preferred_start: 19, priority: "flexible", flexibility: 1},
+    {...presets.laundry, preferred_start: 18, priority: "flexible", flexibility: 1},
+    {...presets.water, preferred_start: 18, priority: "flexible", flexibility: 1},
   ];
   enteredLoads = examples.map(load => ({...load, workload_id: `entered-${nextLoadId++}`}));
-  loadsChanged("Demo scenario loaded: a flexible EV, flexible laundry, and critical water heating request.");
+  loadsChanged("Demo scenario loaded: three flexible requests, each 100% willing to shift.");
 });
 resetForm();
 renderLoads();
