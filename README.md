@@ -1,228 +1,189 @@
 # Solar Saver
 
-> New teammate or new coding chat? Start with [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md),
-> then read your assignment under [`instructions/`](instructions/). Codex and
-> compatible coding agents should also read the root [`AGENTS.md`](AGENTS.md)
-> automatically when opened from this repository.
+**Schedule flexible electricity use when solar energy is available—without overloading the grid or ignoring people's priorities.**
 
-Solar Saver is a backend-first prototype that predicts a 24-hour solar supply
-profile and coordinates synthetic Charlottesville workloads against that supply.
-It compares three policies:
+[Open the public demo](https://shamirgelal.github.io/Solar-Saver/) · [Read the project context](PROJECT_CONTEXT.md) · [Explore the forecasting pipeline](solar_saver/forecasting/README.md)
 
-1. uncoordinated user-preferred scheduling;
-2. solar-only scheduling;
-3. balanced scheduling using solar supply, grid capacity, priority, preference,
-   and fairness penalties.
+Solar Saver is a Girls Hoo Hack 2026 prototype for a simulated Charlottesville district. It predicts a 24-hour solar-supply profile, generates synthetic household demand, and compares three ways to schedule flexible loads such as EV charging, laundry, dishwashing, water heating, and battery charging.
 
-The application uses the trained weather-aware forecaster when its local artifact
-is available. Missing artifacts or unavailable weather data trigger a clearly
-labeled synthetic seasonal fallback.
+The central question is simple: **How can a community move flexible electricity use toward solar hours without creating a new demand peak?**
 
-## Recommended team
+> [!IMPORTANT]
+> The GitHub Pages site is a static, precomputed district demo. Run the Python application locally to use **Compare my loads** with appliances you enter.
 
-Three primary implementers are optimal:
+## What the program does
 
-- Solar data and forecasting
-- Demand simulation
-- Scheduling and metrics
+Solar Saver runs one reproducible 24-hour simulation:
 
-A fourth teammate is useful as integration, testing, deployment, and demo owner.
-Using only two computers creates a bottleneck between modeling and scheduling and
-does not simplify the interfaces.
+1. A solar forecaster produces one expected supply value for each hour.
+2. A deterministic demand generator creates background demand and flexible household requests.
+3. Three scheduling policies receive the exact same scenario.
+4. The application measures solar matching, grid energy, peak demand, completion, capacity violations, preference shifts, and unfinished work.
+5. The UI displays the policies side by side and plots their hourly demand.
 
-## Stable API
+The current district demo models:
 
-Shared objects live in `solar_saver/domain.py`. Component protocols live in
-`solar_saver/contracts.py`. Do not change either file independently after work
-is divided. Propose shared changes to the whole team first.
+- **10,000 synthetic people**, represented by **4,000 households**;
+- **one flexible request per household**;
+- **20,000 kW of community solar capacity**;
+- a **20,000 kW total-demand capacity limit**;
+- 24 one-hour slots on October 18, 2026; and
+- seed 42, so identical inputs produce identical scenarios.
 
-The future UI should call only:
+These are explicit demonstration assumptions. The demand profile, population conversion, solar capacity, and grid limit are not observed Charlottesville utility data.
 
-```python
-from solar_saver.pipeline import run_comparison
+## The three scheduling policies
+
+| Policy | How it schedules work | Trade-off it demonstrates |
+| --- | --- | --- |
+| **Uncoordinated** | Starts each request as close as possible to its preferred time. | Protects convenience, but does not coordinate the community. |
+| **Solar-only** | Moves requests toward the strongest available solar supply while respecting windows and capacity. | Uses more solar, but may shift people farther from preferred times. |
+| **Balanced** | Scores solar use, capacity, priority, preference, peak demand, and fairness together. | Seeks a practical compromise across all goals. |
+
+Critical workload protection is an explicit scheduling rule. The ML model only predicts solar availability; it never decides which person deserves electricity.
+
+## How the system fits together
+
+```mermaid
+flowchart LR
+    A[NASA POWER historical data] --> B[Feature preparation]
+    B --> C[Trained solar forecaster]
+    W[Open-Meteo forecast weather] --> C
+    C --> D[24-hour SolarProfile]
+    F[Seasonal fallback] -. when model or weather is unavailable .-> D
+    D --> E[Synthetic district demand]
+    E --> G[Uncoordinated]
+    E --> H[Solar-only]
+    E --> I[Balanced]
+    G --> J[Metrics and UI]
+    H --> J
+    I --> J
 ```
 
-The pipeline accepts one implementation of each protocol:
+The forecasting pipeline uses a scikit-learn histogram gradient-boosting model. At runtime, Solar Saver loads `artifacts/solar_forecaster.joblib` and requests weather inputs from Open-Meteo. If the artifact is missing or weather is unavailable, it switches to a clearly labeled deterministic seasonal fallback. Invalid artifacts and unrelated application errors remain visible as errors.
 
-- `SolarForecaster`
-- `DemandGenerator`
-- `LoadScheduler`
+All subsystems communicate through the domain objects in [`solar_saver/domain.py`](solar_saver/domain.py) and protocols in [`solar_saver/contracts.py`](solar_saver/contracts.py). The integration entry point is [`run_comparison`](solar_saver/pipeline.py).
 
-This makes implementations replaceable without changing their consumers.
+## Public demo versus local application
 
-## Run locally
+| Capability | GitHub Pages | Local Python application |
+| --- | :---: | :---: |
+| View the 10,000-person district comparison | Yes | Yes |
+| Switch charts between the three policies | Yes | Yes |
+| Inspect hourly values and metrics | Yes | Yes |
+| Add or edit appliance loads | Prepare only | Yes |
+| Run **Compare my loads** | No | Yes |
+| Recompute forecasts and schedules | No | Yes |
 
-From this directory, use Python 3.10+ and install dependencies in an isolated
-environment:
+GitHub Pages can serve HTML, CSS, JavaScript, and a precomputed JSON report, but it cannot run this repository's Python backend. The local application provides `POST /api/comparison`, which validates entered loads and runs the real pipeline. A future public interactive deployment will require hosting that Python API.
+
+## Run the complete application locally
+
+Python 3.10 or newer is recommended. Clone the repository, enter its directory, and install the dependencies in a virtual environment.
+
+### Windows PowerShell
+
+```powershell
+py -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m solar_saver.ui
+```
+
+### macOS or Linux
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m unittest discover -s tests -v
-PYTHONPATH=. .venv/bin/python scripts/run_demo.py
-```
-
-Install requirements even for the seasonal demo: the forecasting package currently
-exports its trained model eagerly, which imports the ML packages. After installation,
-explicit seasonal demo mode needs no network connection or trained artifact.
-
-To produce the trained artifact, follow
-[`solar_saver/forecasting/README.md`](solar_saver/forecasting/README.md).
-The runtime loads `artifacts/solar_forecaster.joblib` relative to the repository,
-and requests live Open-Meteo weather with a five-second connection/read timeout.
-Missing artifacts, weather request failures, and unusable weather responses
-select `SeasonalDemoForecaster`; its original synthetic warning is retained and
-a fallback reason is added. Invalid model artifacts and unrelated backend errors
-remain errors. The command-line demo prints the model and warnings to stderr,
-keeping its existing metrics JSON on stdout.
-
-For a deterministic offline run, set `SOLAR_SAVER_FORECAST_MODE=demo` (PowerShell:
-`$env:SOLAR_SAVER_FORECAST_MODE='demo'`). Set it to `auto` to restore automatic
-selection. This setting applies to the CLI, local UI server, and static exporter.
-Dependencies must still be installed for offline mode. Tests use controlled
-forecasters and weather responses; they do not require a local artifact or internet.
-
-## Open the demo UI
-
-From the repository root, run:
-
-```bash
 .venv/bin/python -m solar_saver.ui
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in a browser. Python 3.10+
-is recommended. Install the dependencies above first; no frontend build step is
-needed. Automatic trained prediction needs an artifact and internet; the seasonal
-fallback works offline. Stop
-the server with Ctrl+C. If port 8000 is busy, run
-`.venv/bin/python -m solar_saver.ui --port 8001` and open that port instead. The server
-listens on your computer's loopback address and is intended for a local demo.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000). If port 8000 is busy, add `--port 8001` to the last command and open [http://127.0.0.1:8001](http://127.0.0.1:8001). Stop the server with `Ctrl+C`.
 
-The page offers two modes:
+The local page has two modes:
 
-- **My loads:** add, edit, and remove up to 100 appliance loads. Editable presets
-  cover EV charging, laundry, dishwashing, battery charging, and water heating;
-  custom names and values are supported. Enter power in kW, whole-hour duration,
-  earliest start, finish deadline, preferred start, priority, and willingness to
-  shift (0–1). The entire duration must fit within the same day's allowed window,
-  including at the preferred start; 24:00 means the end of the day. Presets are
-  simulation assumptions, not measured appliance data. Entries live in the tab
-  and are cleared by a page refresh.
-- **District demo:** a deterministic 10,000-person synthetic scenario, represented
-  by 4,000 modeled households at 2.5 people per household and one flexible
-  request per household.
-  “View district demo” restores this comparison without clearing entered loads.
+- **District demo** runs all 4,000 synthetic household requests.
+- **My loads** lets you add, edit, and remove up to 100 appliance requests. Entered requests replace the district's generated flexible requests while the same synthetic background demand, solar capacity, and demand limit remain.
 
-“Compare my loads” runs the three existing scheduling policies on the entered
-loads plus the existing simulated district background. Entered loads replace the
-synthetic flexible population. Both modes use October 18, 2026, seed 42, 20,000 kW
-of community solar, a 20,000 kW total-demand capacity limit, and default scheduler
-weights. These are scaled district simulation settings. The population conversion,
-solar capacity, and demand limit are explicit assumptions, not measured
-Charlottesville demographic or utility values.
-Solar supply uses the same automatic trained-model selection and labeled fallback as the district demo. The selected model and forecast warnings appear above the results.
+Each appliance has a power requirement, whole-hour duration, availability window, preferred start, priority, and willingness to shift. Completed work always keeps its requested energy and must remain inside its allowed window.
 
-Results include a selectable 24-hour power chart, accessible hourly data,
-completion counts, and the full metrics table. In custom mode an appliance table
-shows each load's actual scheduled interval, start-time shift, requested energy,
-and any unfinished work. Policy selection updates both the chart and appliance
-table. Editing or deleting a load hides stale custom results until recomputed.
-“Reload comparison” reruns the most recently requested mode. Critical priority
-is an explicit scheduling order rule, not a guarantee of completion.
+### Run the command-line comparison
 
-The UI calls `run_comparison` and adapts its `SimulationReport` to a JSON response
-at `GET /comparison.json` (also available at `GET /api/comparison`). Custom
-comparisons use `POST /api/comparison` with a JSON object containing a `workloads`
-list. Each item contains `workload_id`, `category`, `power_kw`, `duration_hours`,
-`earliest_start`, `latest_finish`, `preferred_start`, `priority`, and `flexibility`.
-IDs must be unique. Requests are limited to 100 loads, 64-character names/IDs,
-finite positive power up to 10,000 kW, and a 64 KiB JSON body. Malformed JSON
-returns 400; invalid loads return 422. Missing local dependencies return an
-actionable 503 setup message. Responses include workloads and per-policy
-assignments as well as aggregate metrics. The UI does not read
-saved outputs or private subsystem files.
-This endpoint is a local UI adapter, not a new shared subsystem contract. No
-shared domain types, protocols, or backend algorithms are changed. A UI-owned
-`EnteredLoadDemandGenerator` implements the existing demand protocol. Backend
-failures produce an error with a retry button; infeasible coordinated schedules
-are reported instead of replaced with made-up results. Valid scenarios with
-unfinished workloads still show their completion counts and energy metrics.
+Windows PowerShell:
 
-Chart values are kW; one-hour slots sum to kWh in the metrics. Scheduling shifts
-electricity use rather than inherently reducing requested energy. Read grid
-energy alongside completion: unfinished work can reduce served energy. Average
-preference deviation covers completed workloads only; a “No critical workloads”
-label avoids presenting the backend's empty-set completion convention as evidence
-of critical-load protection. Greedy scheduling is deterministic, but not globally
-optimal and does not guarantee fairness across days.
-
-UI integration checks are included in the regular test suite:
-
-```bash
-.venv/bin/python -m unittest discover -s tests -v
+```powershell
+$env:PYTHONPATH = "."
+.\.venv\Scripts\python.exe scripts/run_demo.py
 ```
 
-Input validation, request handling, static-export capabilities, and the custom
-pipeline can also be tested without live weather or network sockets. These
-tests inject a fixed test solar profile and exercise the real scheduler:
+macOS or Linux:
 
 ```bash
-python3 -m unittest discover -s tests -p test_ui_inputs.py -v
+PYTHONPATH=. .venv/bin/python scripts/run_demo.py
 ```
 
-## GitHub Pages demo
+The command prints the selected forecast model and any fallback warning, then outputs the metrics for all three policies as JSON.
 
-The published demo is available at
-[shamirgelal.github.io/Solar-Saver](https://shamirgelal.github.io/Solar-Saver/).
-GitHub Pages serves static files, so the deployment workflow runs the existing
-Python pipeline at build time and exports the fixed comparison alongside the
-page. The hosted “Reload comparison” button reloads these precomputed results;
-the local Python server recomputes them. Chart selection and the hourly table
-work in both versions. The static export sets `supports_custom_loads` to false:
-the load editor remains available for preparing inputs, while custom comparison
-is disabled with an explanation that it requires the local app. This does not
-run Python or train a model in the browser. Interactive hosted scheduling needs
-a deployed Python backend; the Pages workflow remains a fixed demo.
+### Run without network access or a trained artifact
 
-Export uses the same automatic model selection. GitHub's clean checkout has no
-trained artifact, so the current workflow publishes a labeled seasonal fallback.
-A local export with an artifact and available weather publishes trained results.
-To deploy trained results from CI, provision the artifact separately before the
-export step; never commit it to Git. Published results retain the model and
-warning from the time of export.
+Set `SOLAR_SAVER_FORECAST_MODE=demo` before starting the CLI or UI. This forces the deterministic seasonal forecaster. Use `auto` to restore trained-model selection. Dependencies still need to be installed because the forecasting package imports the ML components.
 
-To build and preview the same static site locally:
+To prepare data and train a local artifact, follow the [`forecasting README`](solar_saver/forecasting/README.md). Trained artifacts, raw downloads, caches, and generated outputs are intentionally excluded from Git.
+
+## Test the project
+
+From the repository root:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+The suite covers shared contracts, deterministic demand generation, scheduling invariants, metrics, forecasting data and model behavior, runtime fallback, local HTTP endpoints, custom appliance inputs, and the GitHub Pages export.
+
+## Repository guide
+
+```text
+solar_saver/
+├── data/           NASA POWER, Open-Meteo, and feature preparation
+├── forecasting/    seasonal fallback, trained model, and evaluation
+├── demand.py       deterministic synthetic household demand
+├── scheduling.py   uncoordinated, solar-only, and balanced scheduling
+├── metrics.py      policy comparison metrics
+├── pipeline.py     shared backend integration entry point
+└── ui/             local server, browser interface, and static exporter
+
+scripts/            data preparation, training, and CLI demo commands
+tests/              unit, contract, integration, HTTP, and export tests
+.github/workflows/  test and GitHub Pages deployment workflow
+```
+
+Developers and coding agents should read [`AGENTS.md`](AGENTS.md), [`PROJECT_CONTEXT.md`](PROJECT_CONTEXT.md), and the matching assignment under [`instructions/`](instructions/) before changing a subsystem.
+
+## Current limitations
+
+- Demand and appliance ownership are synthetic and have not been calibrated against utility or household datasets.
+- The demo represents one district, one day, and hourly time slots.
+- The scheduler is deterministic and greedy; it is not a globally optimal power-system dispatch model.
+- Fairness is evaluated within one simulated day, not across repeated days.
+- The trained forecast depends on a local artifact and live weather inputs.
+- GitHub Pages publishes a seasonal-fallback result unless its build receives a trained artifact separately.
+- The public site cannot run custom appliance comparisons until the Python API is deployed.
+- The prototype does not control physical appliances, integrate with a utility, calculate bills, or make production reliability guarantees.
+
+Solar Saver schedules when requested energy is used. It does not claim to reduce total energy consumption when every workload still completes. The meaningful outcomes are renewable-energy matching, grid energy, peak demand, capacity compliance, completion, and the amount of inconvenience introduced by shifting.
+
+## GitHub Pages deployment
+
+The workflow in [`.github/workflows/static.yml`](.github/workflows/static.yml) runs the full test suite, builds a fixed report with the real backend pipeline, and deploys only the generated static files. A failed test or backend build stops deployment instead of publishing incomplete results.
+
+To build the same static site locally:
 
 ```bash
 python -m solar_saver.ui.export --output-dir outputs/pages
 python -m http.server 8002 --bind 127.0.0.1 --directory outputs
 ```
 
-Open [http://127.0.0.1:8002/pages/](http://127.0.0.1:8002/pages/).
-The subdirectory preview also checks repository-relative asset and data URLs.
-Generated files stay under ignored `outputs/`; they are deployment assets, not
-shared subsystem interfaces or committed experiment output.
+Then open [http://127.0.0.1:8002/pages/](http://127.0.0.1:8002/pages/).
 
-`.github/workflows/static.yml` tests and builds pull requests. On `main`, it
-deploys only the generated `outputs/pages` directory, including a root
-`index.html`, styles, scripts, and JSON results. In repository Settings → Pages,
-the publishing source must be **GitHub Actions**. A failing backend or test
-stops deployment rather than publishing incomplete or fabricated results.
+## Team workflow
 
-## Branch ownership
-
-Suggested branches:
-
-- `forecasting`
-- `demand-simulation`
-- `scheduler-metrics`
-- `integration-ui` (optional fourth teammate)
-
-Prefer small commits. Merge the contracts and smoke test first, then merge each
-subsystem one at a time. Run the full test suite after every merge.
-
-## Integration rule
-
-Subsystems exchange domain objects, not files with undocumented formats. Files
-under `data/`, `artifacts/`, and `outputs/` are implementation details and must
-not become cross-team APIs.
+Subsystem ownership and stable boundaries are documented in [`AGENTS.md`](AGENTS.md). Keep feature branches focused, preserve the shared API, merge current `main` before opening a pull request, and run the complete suite after every subsystem merge.
