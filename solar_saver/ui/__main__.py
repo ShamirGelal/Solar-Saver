@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from solar_saver.demand import SyntheticDemandGenerator
 from solar_saver.domain import (
     ForecastRequest, Priority, SchedulerWeights, SimulationConfig, SimulationReport,
     Workload,
@@ -19,6 +18,11 @@ from solar_saver.domain import (
 from solar_saver.pipeline import run_comparison
 from solar_saver.scheduling import GreedyLoadScheduler
 from .inputs import EnteredLoadDemandGenerator, parse_workloads
+from .scenarios import (
+    SHOWCASE_APPLIANCES_PER_GROUP,
+    SHOWCASE_REPRESENTED_APPLIANCES,
+    evening_surge_workloads,
+)
 
 
 DEMO_DATE = date(2026, 10, 18)
@@ -28,14 +32,16 @@ DEMO_HOUSEHOLDS = int(DEMO_POPULATION / DEMO_PEOPLE_PER_HOUSEHOLD)
 DEMO_SOLAR_CAPACITY_KW = 80_000.0
 DEMO_GRID_CAPACITY_KW = 80_000.0
 # The scheduler measures grid energy in kWh while its other score terms are
-# small ratios or hour deviations. This UI-specific weighting keeps all four
-# balanced-policy goals visible in the large aggregate demo.
-DEMO_SCHEDULER_WEIGHTS = SchedulerWeights(
+# small ratios or hour deviations. These presentation weights keep all four
+# goals visible for MW-scale aggregate groups. Household-scale custom entries
+# retain the shared scheduler defaults because their kW scale is much smaller.
+SHOWCASE_SCHEDULER_WEIGHTS = SchedulerWeights(
     grid_energy=0.01,
-    preference=1.0,
-    peak=2.0,
-    fairness=0.5,
+    preference=2.0,
+    peak=5.0,
+    fairness=1.0,
 )
+CUSTOM_SCHEDULER_WEIGHTS = SchedulerWeights()
 STATIC_FILES = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/app.css": ("app.css", "text/css; charset=utf-8"),
@@ -43,15 +49,36 @@ STATIC_FILES = {
 }
 
 
-def serialize_report(report: SimulationReport, *, mode: str = "demo") -> dict:
+def serialize_report(
+    report: SimulationReport,
+    *,
+    mode: str = "showcase",
+    workload_scale: str = "aggregate",
+    represented_appliance_count: int | None = None,
+) -> dict:
     """Adapt domain objects for this UI, without changing shared contracts."""
+    is_showcase = mode == "showcase"
     return {
         "mode": mode,
+        "workload_scale": workload_scale,
+        "scenario_name": (
+            "Evening surge showcase" if is_showcase else "Custom load comparison"
+        ),
+        "scenario_description": (
+            "Flexible appliances prefer 18:00, creating an intentionally stressed evening peak."
+            if is_showcase else
+            "Entered loads are compared against the same synthetic district background."
+        ),
         "supports_custom_loads": True,
         "target_date": DEMO_DATE.isoformat(),
         "model_name": report.solar_profile.model_name,
         "forecast_metadata": dict(report.solar_profile.metadata),
         "workload_count": len(report.scenario.workloads),
+        "represented_appliance_count": (
+            len(report.scenario.workloads)
+            if represented_appliance_count is None
+            else represented_appliance_count
+        ),
         "critical_workload_count": sum(
             load.priority is Priority.CRITICAL for load in report.scenario.workloads
         ),
@@ -83,7 +110,17 @@ def serialize_report(report: SimulationReport, *, mode: str = "demo") -> dict:
     }
 
 
-def build_comparison(workloads: tuple[Workload, ...] | None = None, *, forecaster=None) -> dict:
+def build_comparison(
+    workloads: tuple[Workload, ...] | None = None,
+    *,
+    forecaster=None,
+    workload_scale: str = "household",
+) -> dict:
+    is_showcase = workloads is None
+    if workload_scale not in {"household", "aggregate"}:
+        raise ValueError("workload_scale must be household or aggregate.")
+    selected_scale = "aggregate" if is_showcase else workload_scale
+    selected_workloads = evening_surge_workloads() if is_showcase else workloads
     if forecaster is None:
         # Keep the input editor/server importable before optional ML packages
         # are installed. The forecasting package currently imports its model.
@@ -99,13 +136,26 @@ def build_comparison(workloads: tuple[Workload, ...] | None = None, *, forecaste
             random_seed=42,
             grid_capacity_kw=DEMO_GRID_CAPACITY_KW,
         ),
-        scheduler_weights=DEMO_SCHEDULER_WEIGHTS,
+        scheduler_weights=(
+            SHOWCASE_SCHEDULER_WEIGHTS
+            if selected_scale == "aggregate" else CUSTOM_SCHEDULER_WEIGHTS
+        ),
         forecaster=forecaster,
-        demand_generator=(SyntheticDemandGenerator() if workloads is None
-                          else EnteredLoadDemandGenerator(workloads)),
+        demand_generator=EnteredLoadDemandGenerator(selected_workloads),
         scheduler=GreedyLoadScheduler(),
     )
-    return serialize_report(report, mode="demo" if workloads is None else "custom")
+    return serialize_report(
+        report,
+        mode="showcase" if is_showcase else "custom",
+        workload_scale=selected_scale,
+        represented_appliance_count=(
+            SHOWCASE_REPRESENTED_APPLIANCES
+            if is_showcase else (
+                len(selected_workloads) * SHOWCASE_APPLIANCES_PER_GROUP
+                if selected_scale == "aggregate" else len(selected_workloads)
+            )
+        ),
+    )
 
 
 class DemoHandler(BaseHTTPRequestHandler):
@@ -133,7 +183,12 @@ class DemoHandler(BaseHTTPRequestHandler):
             return
         try:
             workloads = parse_workloads(payload)
-            self._json(HTTPStatus.OK, build_comparison(workloads))
+            workload_scale = payload.get("workload_scale", "household")
+            if workload_scale not in {"household", "aggregate"}:
+                raise ValueError("workload_scale must be household or aggregate.")
+            self._json(HTTPStatus.OK, build_comparison(
+                workloads, workload_scale=workload_scale,
+            ))
         except ModuleNotFoundError:
             self._dependency_error()
         except ValueError as error:

@@ -9,7 +9,8 @@ import unittest
 from unittest.mock import patch
 
 from solar_saver.demand import SyntheticDemandGenerator
-from solar_saver.domain import ForecastRequest, SimulationConfig, SolarProfile
+from solar_saver.domain import ForecastRequest, SchedulerWeights, SimulationConfig, SolarProfile
+from solar_saver.pipeline import run_comparison
 from solar_saver.ui.__main__ import DemoHandler, build_comparison
 from solar_saver.ui.inputs import EnteredLoadDemandGenerator, parse_workloads
 from solar_saver.ui.export import export_site
@@ -105,8 +106,10 @@ class EnteredLoadTests(unittest.TestCase):
         )]})
         payload = build_comparison(loads, forecaster=FixedForecaster())
         self.assertEqual(payload["mode"], "custom")
+        self.assertEqual(payload["workload_scale"], "household")
         self.assertTrue(payload["supports_custom_loads"])
         self.assertEqual(payload["workload_count"], 2)
+        self.assertEqual(payload["represented_appliance_count"], 2)
         self.assertAlmostEqual(payload["requested_flexible_energy_kwh"], 22.4)
         self.assertEqual(len(payload["workloads"]), 2)
         for name, result in payload["strategies"].items():
@@ -118,6 +121,29 @@ class EnteredLoadTests(unittest.TestCase):
             if name != "uncoordinated":
                 self.assertEqual(result["metrics"]["capacity_violation_hours"], 0)
         json.dumps(payload, allow_nan=False)
+
+    def test_custom_loads_use_household_scale_scheduler_weights(self):
+        loads = parse_workloads({"workloads": [entered_load()]})
+        with patch("solar_saver.ui.__main__.run_comparison", wraps=run_comparison) as pipeline:
+            build_comparison(loads, forecaster=FixedForecaster())
+        self.assertEqual(
+            pipeline.call_args.kwargs["scheduler_weights"], SchedulerWeights(),
+        )
+
+    def test_loaded_showcase_keeps_aggregate_scale_and_weights(self):
+        showcase = build_comparison(forecaster=FixedForecaster())
+        loads = parse_workloads({"workloads": showcase["workloads"]})
+        with patch("solar_saver.ui.__main__.run_comparison", wraps=run_comparison) as pipeline:
+            copied = build_comparison(
+                loads, forecaster=FixedForecaster(), workload_scale="aggregate",
+            )
+        self.assertEqual(copied["workload_scale"], "aggregate")
+        self.assertEqual(copied["represented_appliance_count"], 20_000)
+        self.assertEqual(
+            pipeline.call_args.kwargs["scheduler_weights"],
+            SchedulerWeights(grid_energy=0.01, preference=2.0, peak=5.0, fairness=1.0),
+        )
+        self.assertEqual(copied["strategies"], showcase["strategies"])
 
     def test_oversized_load_is_reported_unfinished_without_partial_energy(self):
         loads = parse_workloads({"workloads": [
@@ -150,14 +176,17 @@ class EnteredLoadTests(unittest.TestCase):
         self.assertEqual(deleted["requested_flexible_energy_kwh"], 0)
         self.assertEqual(deleted["workload_count"], 0)
 
-    def test_district_demo_keeps_its_original_population(self):
+    def test_showcase_keeps_district_background_and_aggregate_loads(self):
         first = build_comparison(forecaster=FixedForecaster())
         second = build_comparison(forecaster=FixedForecaster())
         self.assertEqual(first, second)
-        self.assertEqual(first["mode"], "demo")
+        self.assertEqual(first["mode"], "showcase")
         self.assertEqual(first["population_count"], 40_000)
         self.assertEqual(first["household_count"], 16_000)
-        self.assertEqual(first["workload_count"], 16_000)
+        self.assertEqual(first["workload_count"], 100)
+        self.assertEqual(first["represented_appliance_count"], 20_000)
+        self.assertEqual({load["preferred_start"] for load in first["workloads"]}, {18})
+        self.assertEqual({load["flexibility"] for load in first["workloads"]}, {1.0})
 
     def test_static_export_does_not_advertise_live_computation(self):
         payload = build_comparison(forecaster=FixedForecaster())
@@ -167,8 +196,9 @@ class EnteredLoadTests(unittest.TestCase):
                 export_site(destination)
             actual = json.loads((destination / "comparison.json").read_text())
             self.assertFalse(actual["supports_custom_loads"])
-            self.assertEqual(actual["mode"], "demo")
-            self.assertEqual(actual["workload_count"], 16_000)
+            self.assertEqual(actual["mode"], "showcase")
+            self.assertEqual(actual["workload_count"], 100)
+            self.assertEqual(actual["represented_appliance_count"], 20_000)
             self.assertTrue((destination / "app.js").is_file())
 
 
@@ -189,11 +219,26 @@ class CustomRequestTests(unittest.TestCase):
     def test_post_runs_comparison_for_submitted_loads(self):
         raw = json.dumps({"workloads": [entered_load()]}).encode()
         with patch("solar_saver.ui.__main__.build_comparison",
-                   side_effect=lambda loads: build_comparison(loads, forecaster=FixedForecaster())):
+                   side_effect=lambda loads, workload_scale="household": build_comparison(
+                       loads, forecaster=FixedForecaster(), workload_scale=workload_scale,
+                   )):
             status, payload = self.request(raw)
         self.assertEqual(status, 200)
         self.assertEqual(payload["mode"], "custom")
         self.assertEqual(payload["workload_count"], 1)
+
+    def test_post_accepts_explicit_aggregate_scale(self):
+        raw = json.dumps({
+            "workloads": [entered_load()], "workload_scale": "aggregate",
+        }).encode()
+        with patch("solar_saver.ui.__main__.build_comparison",
+                   side_effect=lambda loads, workload_scale="household": build_comparison(
+                       loads, forecaster=FixedForecaster(), workload_scale=workload_scale,
+                   )):
+            status, payload = self.request(raw)
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["workload_scale"], "aggregate")
+        self.assertEqual(payload["represented_appliance_count"], 200)
 
     def test_invalid_json_and_empty_body_return_400(self):
         for raw in (b"{", b"\xff", b""):
@@ -205,6 +250,13 @@ class CustomRequestTests(unittest.TestCase):
         self.assertEqual(status, 422)
         self.assertNotIn("strategies", payload)
         self.assertIn("duration_hours", payload["detail"])
+
+    def test_invalid_workload_scale_returns_422(self):
+        status, payload = self.request(json.dumps({
+            "workloads": [entered_load()], "workload_scale": "city",
+        }).encode())
+        self.assertEqual(status, 422)
+        self.assertIn("workload_scale", payload["detail"])
 
     def test_request_limits_and_media_type_are_enforced(self):
         self.assertEqual(self.request(b"{}", length=65_537)[0], 413)

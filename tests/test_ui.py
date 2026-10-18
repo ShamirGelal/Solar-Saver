@@ -34,30 +34,25 @@ class OfflineDemoTestCase(unittest.TestCase):
 
 
 class DemoIntegrationTests(OfflineDemoTestCase):
-    def test_page_describes_household_requests_and_demand_limits(self):
+    def test_page_describes_the_presentation_scenario_and_uses_one_source(self):
         source = Path(__file__).parents[1] / "solar_saver" / "ui"
         page = (source / "index.html").read_text(encoding="utf-8")
         client = (source / "app.js").read_text(encoding="utf-8")
 
         self.assertIn("40,000 synthetic people", page)
         self.assertIn("16,000 modeled households", page)
-        self.assertIn("One flexible request is modeled per household", page)
+        self.assertIn("20,000 flexible", page)
+        self.assertIn("all prefer the same evening hour", page)
         self.assertIn("Demand is synthetic and uncalibrated", page)
         self.assertNotIn("synthetic users", page)
-        self.assertIn('"household requests"', client)
-        self.assertIn("Household-request completion", client)
-
-        demo_loads = client.split(
-            'byId("example-loads").addEventListener', 1
-        )[1]
-        self.assertIn("const demoLoadCount = 100;", client)
-        self.assertIn("const demoGroupSize = 300;", client)
-        self.assertIn('priority: "flexible"', demo_loads)
-        self.assertIn("flexibility: 1", demo_loads)
-        self.assertNotIn('priority: "critical"', demo_loads)
-        self.assertIn("100 flexible load groups representing 30,000 appliances", client)
-        self.assertIn("all 100% willing to shift", client)
-        self.assertIn("noon and evening demand spikes", client)
+        self.assertIn('"load groups"', client)
+        self.assertIn("Load-group completion", client)
+        self.assertIn("showcaseLoads = data.workloads.map", client)
+        self.assertIn("enteredLoads = showcaseLoads.map", client)
+        self.assertNotIn("demoLoadCount", client)
+        self.assertNotIn("demoGroupSize", client)
+        self.assertIn("renderPolicyInsight", client)
+        self.assertIn("Uncoordinated baseline", page)
 
     def test_adapter_uses_pipeline_and_preserves_profiles_metrics_and_completion(self):
         with patch("solar_saver.ui.__main__.run_comparison", wraps=run_comparison) as pipeline:
@@ -65,14 +60,22 @@ class DemoIntegrationTests(OfflineDemoTestCase):
         pipeline.assert_called_once()
         self.assertEqual(
             pipeline.call_args.kwargs["scheduler_weights"],
-            SchedulerWeights(grid_energy=0.01, preference=1.0, peak=2.0, fairness=0.5),
+            SchedulerWeights(grid_energy=0.01, preference=2.0, peak=5.0, fairness=1.0),
         )
         domain_report = run_comparison(**pipeline.call_args.kwargs)
         self.assertEqual(set(payload["strategies"]), {item.value for item in Strategy})
         self.assertEqual(payload["population_count"], 40_000)
         self.assertEqual(payload["household_count"], 16_000)
-        self.assertEqual(payload["workload_count"], 16_000)
+        self.assertEqual(payload["mode"], "showcase")
+        self.assertEqual(payload["workload_scale"], "aggregate")
+        self.assertEqual(payload["scenario_name"], "Evening surge showcase")
+        self.assertEqual(payload["workload_count"], 100)
+        self.assertEqual(payload["represented_appliance_count"], 20_000)
         self.assertEqual(payload["critical_workload_count"], 0)
+        self.assertEqual(payload["requested_flexible_energy_kwh"], 135_200)
+        self.assertEqual({item["preferred_start"] for item in payload["workloads"]}, {18})
+        self.assertEqual({item["priority"] for item in payload["workloads"]}, {"flexible"})
+        self.assertEqual({item["flexibility"] for item in payload["workloads"]}, {1.0})
         self.assertEqual(payload["installed_capacity_kw"], 80_000.0)
         self.assertEqual(set(payload["grid_capacity_kw"]), {80_000.0})
         self.assertEqual(payload["model_name"], "seasonal-demo-baseline")
@@ -93,6 +96,42 @@ class DemoIntegrationTests(OfflineDemoTestCase):
 
     def test_repeated_demo_is_deterministic(self):
         self.assertEqual(build_comparison(), build_comparison())
+
+    def test_showcase_policies_make_visible_and_honest_tradeoffs(self):
+        payload = build_comparison()
+        uncoordinated = payload["strategies"]["uncoordinated"]
+        solar_only = payload["strategies"]["solar_only"]
+        balanced = payload["strategies"]["balanced"]
+        u, s, b = (item["metrics"] for item in (uncoordinated, solar_only, balanced))
+
+        self.assertEqual(
+            {item["completed_count"] for item in (uncoordinated, solar_only, balanced)},
+            {payload["workload_count"]},
+        )
+        self.assertEqual(
+            {item["served_energy_kwh"] for item in (uncoordinated, solar_only, balanced)},
+            {uncoordinated["served_energy_kwh"]},
+        )
+        self.assertGreater(u["capacity_violation_hours"], 0)
+        self.assertEqual(s["capacity_violation_hours"], 0)
+        self.assertEqual(b["capacity_violation_hours"], 0)
+        self.assertLess(s["grid_energy_kwh"], b["grid_energy_kwh"])
+        self.assertLess(b["grid_energy_kwh"], u["grid_energy_kwh"])
+        self.assertGreater(s["renewable_match_percent"], b["renewable_match_percent"] + 5)
+        self.assertGreater(b["renewable_match_percent"], u["renewable_match_percent"] + 5)
+        self.assertLess(b["peak_demand_kw"], s["peak_demand_kw"])
+        self.assertLess(s["peak_demand_kw"], u["peak_demand_kw"])
+        self.assertEqual(u["average_preference_deviation_hours"], 0)
+        self.assertLess(b["average_preference_deviation_hours"],
+                        s["average_preference_deviation_hours"] * 0.4)
+        self.assertGreater(b["average_preference_deviation_hours"], 0)
+        for first, second in ((uncoordinated, solar_only),
+                              (uncoordinated, balanced), (solar_only, balanced)):
+            curve_distance = sum(abs(a - b) for a, b in zip(
+                first["total_demand_kw"], second["total_demand_kw"],
+            ))
+            self.assertGreater(curve_distance,
+                               payload["requested_flexible_energy_kwh"] * 0.2)
 
     def test_adapter_does_not_hide_unfinished_work(self):
         # Background still fits, but some flexible work has no feasible capacity.

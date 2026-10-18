@@ -18,23 +18,68 @@
   <main id="main" class="wrap">
     <section class="intro" aria-labelledby="page-title">
       <div>
-        <p class="eyebrow">CHARLOTTESVILLE DISTRICT · DEMO LAB</p>
-        <h1>A brighter balance.<br><span>One day at a time.</span></h1>
-        <p class="intro-copy">Coordinate flexible electricity use with predicted sunlight—without ignoring capacity, priority, or the times people prefer.</p>
+        <p class="eyebrow">CHARLOTTESVILLE DISTRICT · EVENING SURGE DEMO</p>
+        <h1>Move the load.<br><span>Keep the balance.</span></h1>
+        <p class="intro-copy">See what happens when thousands of flexible appliances all want electricity at 6 p.m.—and how solar-aware coordination changes the curve.</p>
       </div>
       <aside class="day-card" aria-label="Demo scenario">
         <span class="eyebrow">THE SIMULATED DAY</span>
         <strong>October 18, 2026</strong>
-        <p id="scenario-label">24 hourly slots · 40,000 synthetic people · 16,000 modeled households</p>
-        <div><span>Community solar</span><b id="solar-capacity">80,000 kW</b></div>
-        <div><span>Total-demand capacity</span><b id="grid-capacity">80,000 kW</b></div>
+        <p id="scenario-label">40,000 synthetic people · 16,000 modeled households</p>
+        <div><span>Community solar</span><b id="solar-capacity">80 MW</b></div>
+        <div><span>Total-demand capacity</span><b id="grid-capacity">80 MW</b></div>
+        <div><span>Appliance events represented</span><b id="represented-appliances">20,000</b></div>
         <div><span>Reproducible scenario</span><b>Seed 42</b></div>
       </aside>
     </section>
-    <div class="notice"><span aria-hidden="true">ⓘ</span><p><strong>Simulation:</strong> Demand is synthetic and uncalibrated. One flexible request is modeled per household in district mode, and scheduling shifts when energy is used rather than reducing the requested work.</p></div>
+    <div class="notice"><span aria-hidden="true">ⓘ</span><p><strong>Simulation:</strong> Demand is synthetic and uncalibrated. The presentation scenario intentionally stresses one evening; scheduling moves requested energy rather than claiming to reduce it.</p></div>
+
+    <section id="scenario-story" class="scenario-story" aria-labelledby="scenario-story-title">
+      <div><p class="eyebrow">THE PRESENTATION SCENARIO</p><h2 id="scenario-story-title">At 6 p.m., everybody plugs in.</h2><p>One hundred aggregate groups represent 20,000 flexible EV, laundry, dishwasher, water-heating, and battery events across 16,000 households. Some homes contribute more than one event. Every group can shift, but all prefer the same evening hour.</p></div>
+      <dl><div><dt>Flexible work</dt><dd id="showcase-energy">135.2 MWh</dd></div><div><dt>Preferred start</dt><dd>18:00</dd></div><div><dt>Demand limit</dt><dd>80 MW</dd></div></dl>
+    </section>
+
+    <section class="section-head comparison-heading"><div><p class="eyebrow">01 / POLICY COMPARISON</p><h2>One evening surge. Three responses.</h2><p id="comparison-context" class="muted">Evening surge showcase · 100 aggregate load groups</p></div><button id="reload" class="text-button" type="button">Refresh forecast</button></section>
+    <p id="status" role="status" aria-live="polite">Loading the comparison…</p>
+    <div id="error" class="error" role="alert" hidden></div>
+    <noscript><p class="error">Enable JavaScript to load comparison results.</p></noscript>
+    <div id="results" hidden>
+      <div class="model-status"><span class="model-dot" aria-hidden="true"></span><div><strong>Solar forecast</strong><span id="forecast-model"></span><p id="forecast-warning" role="status" hidden></p></div></div>
+      <div id="policy-cards" class="policy-cards" aria-label="Scheduling policy summaries"></div>
+      <section class="outcome-banner" aria-labelledby="outcome-title">
+        <p class="eyebrow">WHY BALANCED</p>
+        <h3 id="outcome-title"></h3>
+        <p id="outcome-detail"></p>
+      </section>
+      <section class="chart-panel" aria-labelledby="chart-title">
+        <div class="chart-header"><div><p class="eyebrow">02 / THE DAILY PROFILE</p><h2 id="chart-title">Watch the demand curve change</h2><p id="chart-summary" class="muted"></p></div>
+          <fieldset class="policy-picker"><legend class="sr-only">Policy displayed in chart</legend>
+            <label><input type="radio" name="policy" value="uncoordinated"><span>Uncoordinated</span></label>
+            <label><input type="radio" name="policy" value="solar_only"><span>Solar-only</span></label>
+            <label><input type="radio" name="policy" value="balanced" checked><span>Balanced</span></label>
+          </fieldset>
+        </div>
+        <div id="policy-insight" class="policy-insight" aria-live="polite"><strong id="policy-insight-title"></strong><p id="policy-insight-detail"></p></div>
+        <div class="legend"><span><i class="solar"></i>Expected solar supply</span><span><i class="demand"></i>Selected total demand</span><span id="baseline-legend" hidden><i class="baseline"></i>Uncoordinated baseline</span><span><i class="capacity"></i>Total-demand capacity</span></div>
+        <div id="chart"></div>
+        <p class="chart-note">Chart scale in MW · Each step is one hour · Exact kW values appear in the technical table · Total demand includes district background demand.</p>
+        <details class="technical-details"><summary>Hourly technical data</summary><div class="table-scroll"><table id="hourly-table"><caption id="hourly-caption">Hourly profile in kW</caption><thead><tr><th scope="col">Hour</th><th scope="col">Solar supply</th><th scope="col">Total demand</th><th scope="col">Grid draw</th><th scope="col">Capacity</th></tr></thead><tbody></tbody></table></div></details>
+      </section>
+      <section id="schedule-panel" class="schedule-panel" aria-labelledby="schedule-title" hidden>
+        <div class="section-head"><div><p class="eyebrow">03 / APPLIANCE TIMINGS</p><h2 id="schedule-title">Your day, scheduled.</h2><p id="schedule-summary" class="muted"></p></div></div>
+        <div class="table-scroll metrics-panel"><table id="schedule-table"><caption class="sr-only">Appliance timings for the selected policy</caption><thead><tr><th scope="col">Load</th><th scope="col">Priority</th><th scope="col">Preferred</th><th scope="col">Scheduled</th><th scope="col">Start shift</th><th scope="col">Requested energy</th></tr></thead><tbody></tbody></table></div>
+        <p class="footnote">Switch policy above to compare appliance timings. Unfinished loads are listed explicitly and contribute no flexible energy.</p>
+      </section>
+      <section class="metrics-section" aria-labelledby="metrics-title">
+        <div class="section-head"><div><p id="metrics-step" class="eyebrow">03 / THE TRADE-OFFS</p><h2 id="metrics-title">The trade-offs made visible</h2></div><p class="muted">Every policy completes the same requested work; only timing changes.</p></div>
+        <div class="table-scroll metrics-panel"><table id="metrics-table"><caption class="sr-only">Comparison of scheduling metrics across the three policies</caption><thead><tr><th scope="col">Metric</th><th scope="col">Uncoordinated</th><th scope="col">Solar-only</th><th scope="col">Balanced</th></tr></thead><tbody></tbody></table></div>
+        <details class="technical-details metrics-details"><summary>More technical metrics</summary><div class="table-scroll metrics-panel"><table id="metrics-extra-table"><caption class="sr-only">Additional scheduling metrics across the three policies</caption><thead><tr><th scope="col">Metric</th><th scope="col">Uncoordinated</th><th scope="col">Solar-only</th><th scope="col">Balanced</th></tr></thead><tbody></tbody></table></div></details>
+        <p class="footnote">Renewable matching is solar energy used ÷ total served energy. Preference shifts cover completed requests only.</p>
+      </section>
+    </div>
 
     <section class="planner" aria-labelledby="planner-title">
-      <div class="section-head"><div><p class="eyebrow">01 / PLAN YOUR DAY</p><h2 id="planner-title">What needs to run?</h2></div><span class="step-note">Add loads, then compare their schedules.</span></div>
+      <div class="section-head"><div><p class="eyebrow">TRY IT YOURSELF</p><h2 id="planner-title">Build your own load mix.</h2></div><span class="step-note">Add loads, then compare their schedules.</span></div>
       <p id="planner-availability" class="muted" role="status">Checking interactive scheduling…</p>
       <div class="planner-grid">
         <form id="load-form" class="load-form">
@@ -64,52 +109,14 @@
         </form>
         <div class="load-list-panel">
           <div class="load-list-heading"><h3>My loads <span id="load-count" class="count-pill">0</span></h3><span id="total-load-energy" class="muted">0.0 kWh requested</span></div>
-          <div id="empty-loads" class="empty-loads"><span class="empty-sun" aria-hidden="true">✳</span><h3>A better schedule starts here.</h3><p>Add an appliance, or load a ready-made scenario designed to reveal the trade-offs.</p><button id="example-loads" type="button">Load demo scenario</button></div>
+          <div id="empty-loads" class="empty-loads"><span class="empty-sun" aria-hidden="true">✳</span><h3>Start with the presentation scenario.</h3><p>Load the same 100 aggregate groups shown above, then edit or replace them.</p><button id="example-loads" type="button">Load showcase into editor</button></div>
           <ul id="load-list" class="load-list" aria-label="Entered appliance loads"></ul>
-          <div class="compare-actions"><button id="compare-loads" class="primary-button" type="button" disabled>Compare my loads <span aria-hidden="true">→</span></button><button id="view-demo" type="button">View district demo</button></div>
-          <p class="field-help">Your loads replace the flexible population while the same district background, solar capacity, and grid limit remain.</p>
+          <div class="compare-actions"><button id="compare-loads" class="primary-button" type="button" disabled>Compare my loads <span aria-hidden="true">→</span></button><button id="view-demo" type="button">Reset showcase</button></div>
+          <p class="field-help">Your loads replace the showcase groups while the same synthetic district background, solar profile, and demand limit remain.</p>
           <p id="editor-status" class="muted" role="status" aria-live="polite"></p>
         </div>
       </div>
     </section>
-
-    <section class="section-head comparison-heading"><div><p class="eyebrow">02 / POLICY COMPARISON</p><h2>Same day. Three approaches.</h2><p id="comparison-context" class="muted">District demo · 16,000 synthetic household requests</p></div><button id="reload" class="text-button" type="button">Refresh forecast</button></section>
-    <p id="status" role="status" aria-live="polite">Loading the comparison…</p>
-    <div id="error" class="error" role="alert" hidden></div>
-    <noscript><p class="error">Enable JavaScript to load comparison results.</p></noscript>
-    <div id="results" hidden>
-      <div class="model-status"><span class="model-dot" aria-hidden="true"></span><div><strong>Solar forecast</strong><span id="forecast-model"></span><p id="forecast-warning" role="status" hidden></p></div></div>
-      <div id="policy-cards" class="policy-cards" aria-label="Scheduling policy summaries"></div>
-      <section class="outcome-banner" aria-labelledby="outcome-title">
-        <p class="eyebrow">KEY OUTCOME</p>
-        <h3 id="outcome-title"></h3>
-        <p id="outcome-detail"></p>
-      </section>
-      <section class="chart-panel" aria-labelledby="chart-title">
-        <div class="chart-header"><div><p class="eyebrow">03 / THE DAILY PROFILE</p><h2 id="chart-title">Where demand meets daylight</h2><p id="chart-summary" class="muted"></p></div>
-          <fieldset class="policy-picker"><legend class="sr-only">Policy displayed in chart</legend>
-            <label><input type="radio" name="policy" value="uncoordinated"><span>Uncoordinated</span></label>
-            <label><input type="radio" name="policy" value="solar_only"><span>Solar-only</span></label>
-            <label><input type="radio" name="policy" value="balanced" checked><span>Balanced</span></label>
-          </fieldset>
-        </div>
-        <div class="legend"><span><i class="solar"></i>Expected solar supply</span><span><i class="demand"></i>Total demand</span><span><i class="capacity"></i>Total-demand capacity</span></div>
-        <div id="chart"></div>
-        <p class="chart-note">Power in kW · Each step is one hour · Total demand includes district background demand.</p>
-        <details class="technical-details"><summary>Hourly technical data</summary><div class="table-scroll"><table id="hourly-table"><caption id="hourly-caption">Hourly profile in kW</caption><thead><tr><th scope="col">Hour</th><th scope="col">Solar supply</th><th scope="col">Total demand</th><th scope="col">Grid draw</th><th scope="col">Capacity</th></tr></thead><tbody></tbody></table></div></details>
-      </section>
-      <section id="schedule-panel" class="schedule-panel" aria-labelledby="schedule-title" hidden>
-        <div class="section-head"><div><p class="eyebrow">04 / APPLIANCE TIMINGS</p><h2 id="schedule-title">Your day, scheduled.</h2><p id="schedule-summary" class="muted"></p></div></div>
-        <div class="table-scroll metrics-panel"><table id="schedule-table"><caption class="sr-only">Appliance timings for the selected policy</caption><thead><tr><th scope="col">Load</th><th scope="col">Priority</th><th scope="col">Preferred</th><th scope="col">Scheduled</th><th scope="col">Start shift</th><th scope="col">Requested energy</th></tr></thead><tbody></tbody></table></div>
-        <p class="footnote">Switch policy above to compare appliance timings. Unfinished loads are listed explicitly and contribute no flexible energy.</p>
-      </section>
-      <section class="metrics-section" aria-labelledby="metrics-title">
-        <div class="section-head"><div><p id="metrics-step" class="eyebrow">04 / THE TRADE-OFFS</p><h2 id="metrics-title">The trade-offs that matter</h2></div><p class="muted">Solar use only matters when the requested work still gets done.</p></div>
-        <div class="table-scroll metrics-panel"><table id="metrics-table"><caption class="sr-only">Comparison of scheduling metrics across the three policies</caption><thead><tr><th scope="col">Metric</th><th scope="col">Uncoordinated</th><th scope="col">Solar-only</th><th scope="col">Balanced</th></tr></thead><tbody></tbody></table></div>
-        <details class="technical-details metrics-details"><summary>More technical metrics</summary><div class="table-scroll metrics-panel"><table id="metrics-extra-table"><caption class="sr-only">Additional scheduling metrics across the three policies</caption><thead><tr><th scope="col">Metric</th><th scope="col">Uncoordinated</th><th scope="col">Solar-only</th><th scope="col">Balanced</th></tr></thead><tbody></tbody></table></div></details>
-        <p class="footnote">Renewable matching is solar energy used ÷ total served energy. Preference shifts cover completed requests only.</p>
-      </section>
-    </div>
   </main>
   <footer class="wrap"><span>Solar Saver</span><p>Hackathon prototype · Simulated district, real scheduling trade-offs.</p></footer>
 </body>
